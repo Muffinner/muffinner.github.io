@@ -1,3 +1,2 @@
 # muffinner.github.io
-Tati 
-cool
+Tati cool
