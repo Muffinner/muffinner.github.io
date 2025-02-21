@@ -29,12 +29,38 @@
             right: 10px;
             font-size: 20px;
         }
+
+        #gameOver {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+        }
+
+        #restartButton {
+            padding: 10px 20px;
+            font-size: 18px;
+            margin-top: 10px;
+            cursor: pointer;
+            background: #00ff00;
+            border: none;
+            border-radius: 5px;
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
     <div id="score">Score: 0</div>
     <div id="health">Health: 100</div>
+    <div id="gameOver">
+        <h1>GAME OVER</h1>
+        <button id="restartButton">Play Again</button>
+    </div>
     
     <script>
 // Game Engine Core
@@ -47,7 +73,7 @@ class GameEngine {
     }
 
     addSystem(system) {
-        system.setEngine(this);  // Moved this line first
+        system.setEngine(this);
         this.systems.push(system);
     }
 
@@ -58,6 +84,10 @@ class GameEngine {
     removeEntity(entity) {
         const index = this.entities.indexOf(entity);
         if (index > -1) this.entities.splice(index, 1);
+    }
+
+    clearEntities() {
+        this.entities = [];
     }
 
     update(time) {
@@ -77,10 +107,20 @@ class GameEngine {
 
     stop() {
         this.isRunning = false;
+        document.getElementById('gameOver').style.display = 'block';
+    }
+
+    reset() {
+        this.clearEntities();
+        this.systems.forEach(system => system.reset?.());
+        document.getElementById('gameOver').style.display = 'none';
+        const player = new Player();
+        this.addEntity(player);
+        this.start();
     }
 }
 
-// Game Systems (UPDATED WITH setEngine METHODS)
+// Game Systems
 class RenderingSystem {
     setEngine(engine) {
         this.engine = engine;
@@ -138,11 +178,18 @@ class InputSystem {
 
     constructor() {
         this.keys = {};
+        this.lastShot = 0;
         this.setupListeners();
     }
 
     setupListeners() {
-        window.addEventListener('keydown', e => this.keys[e.key] = true);
+        window.addEventListener('keydown', e => {
+            this.keys[e.key] = true;
+            if (e.key === ' ' && Date.now() - this.lastShot > 200) {
+                this.shootLaser();
+                this.lastShot = Date.now();
+            }
+        });
         window.addEventListener('keyup', e => delete this.keys[e.key]);
     }
 
@@ -157,6 +204,21 @@ class InputSystem {
         if (this.keys.ArrowLeft) player.velocityX = -player.speed;
         if (this.keys.ArrowDown) player.velocityY = player.speed;
         if (this.keys.ArrowUp) player.velocityY = -player.speed;
+    }
+
+    shootLaser() {
+        const player = this.engine.entities.find(e => e.player);
+        if (player) {
+            const laser = new Laser(
+                player.x + player.width/2 - 2.5,
+                player.y,
+                5,
+                15,
+                '#00ffff',
+                -0.5
+            );
+            this.engine.addEntity(laser);
+        }
     }
 }
 
@@ -189,12 +251,22 @@ class CollisionSystem {
     handleCollision(a, b) {
         if (a.player && b.enemy) this.handlePlayerEnemyCollision(a, b);
         if (a.enemy && b.player) this.handlePlayerEnemyCollision(b, a);
+        if (a.laser && b.enemy) this.handleLaserEnemyCollision(a, b);
+        if (a.enemy && b.laser) this.handleLaserEnemyCollision(b, a);
     }
 
     handlePlayerEnemyCollision(player, enemy) {
         player.health -= 10;
         this.engine.removeEntity(enemy);
         if (player.health <= 0) this.engine.stop();
+    }
+
+    handleLaserEnemyCollision(laser, enemy) {
+        this.engine.removeEntity(laser);
+        this.engine.removeEntity(enemy);
+        this.engine.systems
+            .find(s => s instanceof ScoreSystem)
+            ?.addPoints(100);
     }
 }
 
@@ -243,6 +315,10 @@ class ScoreSystem {
     addPoints(points) {
         this.score += points;
     }
+
+    reset() {
+        this.score = 0;
+    }
 }
 
 class HealthSystem {
@@ -260,7 +336,7 @@ class HealthSystem {
     }
 }
 
-// Game Entities (unchanged)
+// Game Entities
 class Player {
     constructor() {
         this.x = 100;
@@ -293,6 +369,20 @@ class Enemy {
     }
 }
 
+class Laser {
+    constructor(x, y, width, height, color, velocityY) {
+        this.x = x;
+        this.y = y;
+        this.width = width;
+        this.height = height;
+        this.color = color;
+        this.physics = true;
+        this.graphics = true;
+        this.laser = true;
+        this.velocityY = velocityY;
+    }
+}
+
 // Game Initialization
 const canvas = document.getElementById('gameCanvas');
 const engine = new GameEngine();
@@ -307,14 +397,18 @@ engine.addSystem(new ScoreSystem());
 engine.addSystem(new HealthSystem());
 
 // Add player
-const player = new Player();
-engine.addEntity(player);
+engine.addEntity(new Player());
 
 // Start game
 engine.start();
 
+// Restart button
+document.getElementById('restartButton').addEventListener('click', () => {
+    engine.reset();
+});
+
 // Debug helpers
-window.engine = engine; // Access engine from console
+window.engine = engine;
     </script>
 </body>
 </html>
