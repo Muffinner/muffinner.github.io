@@ -4,66 +4,14 @@
     <meta charset="UTF-8">
     <title>Space Shooter</title>
     <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background: #1a1a1a;
-            color: white;
-            font-family: Arial, sans-serif;
-        }
-
-        #gameCanvas {
-            border: 1px solid #333;
-        }
-
-        #score {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            font-size: 20px;
-        }
-
-        #health {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            font-size: 20px;
-        }
-
-        #gameOver {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            background: rgba(0, 0, 0, 0.8);
-            padding: 20px;
-            border-radius: 10px;
-            display: none;
-        }
-
-        #restartButton {
-            padding: 10px 20px;
-            font-size: 18px;
-            margin-top: 10px;
-            cursor: pointer;
-            background: #00ff00;
-            border: none;
-            border-radius: 5px;
-        }
+        /* ... (keep existing styles the same) ... */
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <div id="score">Score: 0</div>
-    <div id="health">Health: 100</div>
-    <div id="gameOver">
-        <h1>GAME OVER</h1>
-        <button id="restartButton">Play Again</button>
-    </div>
+    <!-- ... (keep existing HTML the same) ... -->
     
     <script>
-// Game Engine Core
+// Game Engine Core (unchanged)
 class GameEngine {
     constructor() {
         this.entities = [];
@@ -120,57 +68,7 @@ class GameEngine {
     }
 }
 
-// Game Systems
-class RenderingSystem {
-    setEngine(engine) {
-        this.engine = engine;
-    }
-
-    constructor(canvas) {
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        this.resizeCanvas();
-        window.addEventListener('resize', () => this.resizeCanvas());
-    }
-
-    resizeCanvas() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-    }
-
-    update() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        this.engine.entities.forEach(entity => {
-            if (entity.graphics) {
-                this.ctx.fillStyle = entity.color;
-                this.ctx.fillRect(entity.x, entity.y, entity.width, entity.height);
-            }
-        });
-    }
-}
-
-class PhysicsSystem {
-    setEngine(engine) {
-        this.engine = engine;
-    }
-
-    update(deltaTime) {
-        this.engine.entities.forEach(entity => {
-            if (entity.physics) {
-                entity.x += entity.velocityX * deltaTime;
-                entity.y += entity.velocityY * deltaTime;
-                this.applyBounds(entity);
-            }
-        });
-    }
-
-    applyBounds(entity) {
-        const canvas = this.engine.systems.find(s => s instanceof RenderingSystem).canvas;
-        entity.x = Math.max(0, Math.min(entity.x, canvas.width - entity.width));
-        entity.y = Math.max(0, Math.min(entity.y, canvas.height - entity.height));
-    }
-}
-
+// UPDATED INPUT SYSTEM
 class InputSystem {
     setEngine(engine) {
         this.engine = engine;
@@ -210,180 +108,65 @@ class InputSystem {
         const player = this.engine.entities.find(e => e.player);
         if (player) {
             const laser = new Laser(
-                player.x + player.width/2 - 2.5,
-                player.y,
+                player.x + player.width/2 - 2.5, // Center laser on player
+                player.y - 10, // Start above player
                 5,
                 15,
                 '#00ffff',
-                -0.5
+                -0.8 // Faster speed
             );
             this.engine.addEntity(laser);
         }
     }
 }
 
-class CollisionSystem {
+// NEW CLEANUP SYSTEM
+class CleanupSystem {
     setEngine(engine) {
         this.engine = engine;
     }
 
     update() {
-        const entities = this.engine.entities;
-        for (let i = 0; i < entities.length; i++) {
-            for (let j = i + 1; j < entities.length; j++) {
-                const a = entities[i];
-                const b = entities[j];
-                
-                if (this.checkCollision(a, b)) {
-                    this.handleCollision(a, b);
-                }
+        const canvas = this.engine.systems.find(s => s instanceof RenderingSystem).canvas;
+        this.engine.entities = this.engine.entities.filter(entity => {
+            if (entity.laser) {
+                return entity.y + entity.height > 0 && entity.y < canvas.height;
             }
-        }
-    }
-
-    checkCollision(a, b) {
-        return a.x < b.x + b.width &&
-               a.x + a.width > b.x &&
-               a.y < b.y + b.height &&
-               a.y + a.height > b.y;
-    }
-
-    handleCollision(a, b) {
-        if (a.player && b.enemy) this.handlePlayerEnemyCollision(a, b);
-        if (a.enemy && b.player) this.handlePlayerEnemyCollision(b, a);
-        if (a.laser && b.enemy) this.handleLaserEnemyCollision(a, b);
-        if (a.enemy && b.laser) this.handleLaserEnemyCollision(b, a);
-    }
-
-    handlePlayerEnemyCollision(player, enemy) {
-        player.health -= 10;
-        this.engine.removeEntity(enemy);
-        if (player.health <= 0) this.engine.stop();
-    }
-
-    handleLaserEnemyCollision(laser, enemy) {
-        this.engine.removeEntity(laser);
-        this.engine.removeEntity(enemy);
-        this.engine.systems
-            .find(s => s instanceof ScoreSystem)
-            ?.addPoints(100);
+            return true;
+        });
     }
 }
 
-class SpawnSystem {
+// UPDATED PHYSICS SYSTEM
+class PhysicsSystem {
     setEngine(engine) {
         this.engine = engine;
-    }
-
-    constructor() {
-        this.spawnInterval = 2000;
-        this.lastSpawn = 0;
     }
 
     update(deltaTime) {
-        this.lastSpawn += deltaTime;
-        if (this.lastSpawn >= this.spawnInterval) {
-            this.spawnEnemy();
-            this.lastSpawn = 0;
-        }
+        this.engine.entities.forEach(entity => {
+            if (entity.physics) {
+                entity.x += entity.velocityX * deltaTime;
+                entity.y += entity.velocityY * deltaTime;
+                
+                // Only apply bounds to non-laser entities
+                if (!entity.laser) {
+                    this.applyBounds(entity);
+                }
+            }
+        });
     }
 
-    spawnEnemy() {
+    applyBounds(entity) {
         const canvas = this.engine.systems.find(s => s instanceof RenderingSystem).canvas;
-        const enemy = new Enemy(
-            Math.random() * canvas.width,
-            Math.random() * canvas.height
-        );
-        this.engine.addEntity(enemy);
+        entity.x = Math.max(0, Math.min(entity.x, canvas.width - entity.width));
+        entity.y = Math.max(0, Math.min(entity.y, canvas.height - entity.height));
     }
 }
 
-class ScoreSystem {
-    setEngine(engine) {
-        this.engine = engine;
-    }
+// ... (keep other systems the same) ...
 
-    constructor() {
-        this.score = 0;
-        this.display = document.getElementById('score');
-    }
-
-    update() {
-        this.display.textContent = `Score: ${this.score}`;
-    }
-
-    addPoints(points) {
-        this.score += points;
-    }
-
-    reset() {
-        this.score = 0;
-    }
-}
-
-class HealthSystem {
-    setEngine(engine) {
-        this.engine = engine;
-    }
-
-    constructor() {
-        this.display = document.getElementById('health');
-    }
-
-    update() {
-        const player = this.engine.entities.find(e => e.player);
-        if (player) this.display.textContent = `Health: ${player.health}`;
-    }
-}
-
-// Game Entities
-class Player {
-    constructor() {
-        this.x = 100;
-        this.y = 100;
-        this.width = 40;
-        this.height = 40;
-        this.color = '#00ff00';
-        this.physics = true;
-        this.graphics = true;
-        this.player = true;
-        this.velocityX = 0;
-        this.velocityY = 0;
-        this.speed = 0.3;
-        this.health = 100;
-    }
-}
-
-class Enemy {
-    constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.width = 30;
-        this.height = 30;
-        this.color = '#ff0000';
-        this.physics = true;
-        this.graphics = true;
-        this.enemy = true;
-        this.velocityX = -0.2;
-        this.velocityY = 0.1;
-    }
-}
-
-class Laser {
-    constructor(x, y, width, height, color, velocityY) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
-        this.color = color;
-        this.physics = true;
-        this.graphics = true;
-        this.laser = true;
-        this.velocityY = velocityY;
-    }
-}
-
-// Game Initialization
+// Initialize game with cleanup system
 const canvas = document.getElementById('gameCanvas');
 const engine = new GameEngine();
 
@@ -395,20 +178,9 @@ engine.addSystem(new CollisionSystem());
 engine.addSystem(new SpawnSystem());
 engine.addSystem(new ScoreSystem());
 engine.addSystem(new HealthSystem());
+engine.addSystem(new CleanupSystem()); // Add new cleanup system
 
-// Add player
-engine.addEntity(new Player());
-
-// Start game
-engine.start();
-
-// Restart button
-document.getElementById('restartButton').addEventListener('click', () => {
-    engine.reset();
-});
-
-// Debug helpers
-window.engine = engine;
+// ... (rest of the code remains the same) ...
     </script>
 </body>
 </html>
