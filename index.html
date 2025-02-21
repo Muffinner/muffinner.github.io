@@ -47,8 +47,8 @@ class GameEngine {
     }
 
     addSystem(system) {
+        system.setEngine(this);  // Moved this line first
         this.systems.push(system);
-        system.setEngine(this);
     }
 
     addEntity(entity) {
@@ -80,8 +80,12 @@ class GameEngine {
     }
 }
 
-// Game Systems
+// Game Systems (UPDATED WITH setEngine METHODS)
 class RenderingSystem {
+    setEngine(engine) {
+        this.engine = engine;
+    }
+
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
@@ -106,6 +110,10 @@ class RenderingSystem {
 }
 
 class PhysicsSystem {
+    setEngine(engine) {
+        this.engine = engine;
+    }
+
     update(deltaTime) {
         this.engine.entities.forEach(entity => {
             if (entity.physics) {
@@ -117,12 +125,17 @@ class PhysicsSystem {
     }
 
     applyBounds(entity) {
-        entity.x = Math.max(0, Math.min(entity.x, this.engine.canvas.width - entity.width));
-        entity.y = Math.max(0, Math.min(entity.y, this.engine.canvas.height - entity.height));
+        const canvas = this.engine.systems.find(s => s instanceof RenderingSystem).canvas;
+        entity.x = Math.max(0, Math.min(entity.x, canvas.width - entity.width));
+        entity.y = Math.max(0, Math.min(entity.y, canvas.height - entity.height));
     }
 }
 
 class InputSystem {
+    setEngine(engine) {
+        this.engine = engine;
+    }
+
     constructor() {
         this.keys = {};
         this.setupListeners();
@@ -148,6 +161,10 @@ class InputSystem {
 }
 
 class CollisionSystem {
+    setEngine(engine) {
+        this.engine = engine;
+    }
+
     update() {
         const entities = this.engine.entities;
         for (let i = 0; i < entities.length; i++) {
@@ -182,6 +199,10 @@ class CollisionSystem {
 }
 
 class SpawnSystem {
+    setEngine(engine) {
+        this.engine = engine;
+    }
+
     constructor() {
         this.spawnInterval = 2000;
         this.lastSpawn = 0;
@@ -196,15 +217,20 @@ class SpawnSystem {
     }
 
     spawnEnemy() {
+        const canvas = this.engine.systems.find(s => s instanceof RenderingSystem).canvas;
         const enemy = new Enemy(
-            Math.random() * this.engine.canvas.width,
-            Math.random() * this.engine.canvas.height
+            Math.random() * canvas.width,
+            Math.random() * canvas.height
         );
         this.engine.addEntity(enemy);
     }
 }
 
 class ScoreSystem {
+    setEngine(engine) {
+        this.engine = engine;
+    }
+
     constructor() {
         this.score = 0;
         this.display = document.getElementById('score');
@@ -220,6 +246,10 @@ class ScoreSystem {
 }
 
 class HealthSystem {
+    setEngine(engine) {
+        this.engine = engine;
+    }
+
     constructor() {
         this.display = document.getElementById('health');
     }
@@ -230,7 +260,7 @@ class HealthSystem {
     }
 }
 
-// Game Entities
+// Game Entities (unchanged)
 class Player {
     constructor() {
         this.x = 100;
