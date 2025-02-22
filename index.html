@@ -51,7 +51,6 @@ class GameEngine {
         this.lastTime = 0;
         this.score = 0;
         this.player = null;
-        this.mouse = { x: 0, y: 0, down: false };
     }
 
     addEntity(entity) {
@@ -60,7 +59,7 @@ class GameEngine {
     }
 
     addSystem(system) {
-        system.setEngine(this); // Fixed: Now systems have setEngine method
+        system.setEngine(this);  // Now properly implemented in all systems
         this.systems.push(system);
     }
 
@@ -192,13 +191,13 @@ class Bullet {
 
 class InputHandler {
     constructor(canvas) {
-        this.keys = {};
         this.canvas = canvas;
-        this.engine = null;
+        this.keys = {};
         this.mouseX = 0;
         this.mouseY = 0;
         this.mouseDown = false;
-        
+        this.engine = null;
+
         window.addEventListener('keydown', e => this.keys[e.key] = true);
         window.addEventListener('keyup', e => this.keys[e.key] = false);
         canvas.addEventListener('mousemove', e => this.onMouseMove(e));
