@@ -11,64 +11,9 @@
     <!-- ... (keep existing HTML the same) ... -->
     
     <script>
-// Game Engine Core (unchanged)
-class GameEngine {
-    constructor() {
-        this.entities = [];
-        this.systems = [];
-        this.lastTime = 0;
-        this.isRunning = false;
-    }
+// ... (keep GameEngine and other systems the same) ...
 
-    addSystem(system) {
-        system.setEngine(this);
-        this.systems.push(system);
-    }
-
-    addEntity(entity) {
-        this.entities.push(entity);
-    }
-
-    removeEntity(entity) {
-        const index = this.entities.indexOf(entity);
-        if (index > -1) this.entities.splice(index, 1);
-    }
-
-    clearEntities() {
-        this.entities = [];
-    }
-
-    update(time) {
-        if (!this.isRunning) return;
-        
-        const deltaTime = time - this.lastTime;
-        this.systems.forEach(system => system.update(deltaTime));
-        this.lastTime = time;
-        requestAnimationFrame((t) => this.update(t));
-    }
-
-    start() {
-        if (this.isRunning) return;
-        this.isRunning = true;
-        requestAnimationFrame((t) => this.update(t));
-    }
-
-    stop() {
-        this.isRunning = false;
-        document.getElementById('gameOver').style.display = 'block';
-    }
-
-    reset() {
-        this.clearEntities();
-        this.systems.forEach(system => system.reset?.());
-        document.getElementById('gameOver').style.display = 'none';
-        const player = new Player();
-        this.addEntity(player);
-        this.start();
-    }
-}
-
-// UPDATED INPUT SYSTEM
+// MODIFIED INPUT SYSTEM WITH DUAL CONTROLS
 class InputSystem {
     setEngine(engine) {
         this.engine = engine;
@@ -98,89 +43,19 @@ class InputSystem {
         player.velocityX = 0;
         player.velocityY = 0;
 
-        if (this.keys.ArrowRight) player.velocityX = player.speed;
-        if (this.keys.ArrowLeft) player.velocityX = -player.speed;
-        if (this.keys.ArrowDown) player.velocityY = player.speed;
-        if (this.keys.ArrowUp) player.velocityY = -player.speed;
+        // Horizontal movement (A/D/Left/Right)
+        if (this.keys.ArrowRight || this.keys.d) player.velocityX = player.speed;
+        if (this.keys.ArrowLeft || this.keys.a) player.velocityX = -player.speed;
+        
+        // Vertical movement (W/S/Up/Down)
+        if (this.keys.ArrowDown || this.keys.s) player.velocityY = player.speed;
+        if (this.keys.ArrowUp || this.keys.w) player.velocityY = -player.speed;
     }
 
-    shootLaser() {
-        const player = this.engine.entities.find(e => e.player);
-        if (player) {
-            const laser = new Laser(
-                player.x + player.width/2 - 2.5, // Center laser on player
-                player.y - 10, // Start above player
-                5,
-                15,
-                '#00ffff',
-                -0.8 // Faster speed
-            );
-            this.engine.addEntity(laser);
-        }
-    }
+    // ... (keep shootLaser() the same) ...
 }
 
-// NEW CLEANUP SYSTEM
-class CleanupSystem {
-    setEngine(engine) {
-        this.engine = engine;
-    }
-
-    update() {
-        const canvas = this.engine.systems.find(s => s instanceof RenderingSystem).canvas;
-        this.engine.entities = this.engine.entities.filter(entity => {
-            if (entity.laser) {
-                return entity.y + entity.height > 0 && entity.y < canvas.height;
-            }
-            return true;
-        });
-    }
-}
-
-// UPDATED PHYSICS SYSTEM
-class PhysicsSystem {
-    setEngine(engine) {
-        this.engine = engine;
-    }
-
-    update(deltaTime) {
-        this.engine.entities.forEach(entity => {
-            if (entity.physics) {
-                entity.x += entity.velocityX * deltaTime;
-                entity.y += entity.velocityY * deltaTime;
-                
-                // Only apply bounds to non-laser entities
-                if (!entity.laser) {
-                    this.applyBounds(entity);
-                }
-            }
-        });
-    }
-
-    applyBounds(entity) {
-        const canvas = this.engine.systems.find(s => s instanceof RenderingSystem).canvas;
-        entity.x = Math.max(0, Math.min(entity.x, canvas.width - entity.width));
-        entity.y = Math.max(0, Math.min(entity.y, canvas.height - entity.height));
-    }
-}
-
-// ... (keep other systems the same) ...
-
-// Initialize game with cleanup system
-const canvas = document.getElementById('gameCanvas');
-const engine = new GameEngine();
-
-// Add systems
-engine.addSystem(new RenderingSystem(canvas));
-engine.addSystem(new InputSystem());
-engine.addSystem(new PhysicsSystem());
-engine.addSystem(new CollisionSystem());
-engine.addSystem(new SpawnSystem());
-engine.addSystem(new ScoreSystem());
-engine.addSystem(new HealthSystem());
-engine.addSystem(new CleanupSystem()); // Add new cleanup system
-
-// ... (rest of the code remains the same) ...
+// ... (keep rest of the code the same) ...
     </script>
 </body>
 </html>
