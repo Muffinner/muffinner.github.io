@@ -1,61 +1,297 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>Space Shooter</title>
+    <title>FPS Shooter</title>
     <style>
-        /* ... (keep existing styles the same) ... */
+        #game-container {
+            position: relative;
+            width: 800px;
+            margin: 0 auto;
+        }
+        #game-canvas {
+            border: 2px solid white;
+            background-color: #111;
+            cursor: crosshair;
+        }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            pointer-events: none;
+        }
+        .crosshair {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0000;
+            font-size: 24px;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
-    <!-- ... (keep existing HTML the same) ... -->
-    
-    <script>
-// ... (keep GameEngine and other systems the same) ...
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="hud">
+            <span>Score: <span id="score">0</span></span>
+            <span>Health: <span id="health">100</span></span>
+        </div>
+        <div class="crosshair">+</div>
+    </div>
 
-// MODIFIED INPUT SYSTEM WITH DUAL CONTROLS
-class InputSystem {
-    setEngine(engine) {
-        this.engine = engine;
+<script>
+class GameEngine {
+    constructor(ctx) {
+        this.ctx = ctx;
+        this.entities = [];
+        this.systems = [];
+        this.lastTime = 0;
+        this.score = 0;
+        this.player = null;
+        this.mouse = { x: 0, y: 0, down: false };
     }
 
-    constructor() {
-        this.keys = {};
-        this.lastShot = 0;
-        this.setupListeners();
+    addEntity(entity) {
+        this.entities.push(entity);
+        if(entity instanceof Player) this.player = entity;
     }
 
-    setupListeners() {
-        window.addEventListener('keydown', e => {
-            this.keys[e.key] = true;
-            if (e.key === ' ' && Date.now() - this.lastShot > 200) {
-                this.shootLaser();
-                this.lastShot = Date.now();
-            }
-        });
-        window.addEventListener('keyup', e => delete this.keys[e.key]);
+    addSystem(system) {
+        system.setEngine(this);
+        this.systems.push(system);
     }
 
-    update() {
-        const player = this.engine.entities.find(e => e.player);
-        if (!player) return;
+    update(deltaTime) {
+        this.systems.forEach(system => system.update(deltaTime));
+        this.entities = this.entities.filter(e => !e.dead);
+        this.entities.forEach(entity => entity.update(deltaTime));
+    }
 
-        player.velocityX = 0;
-        player.velocityY = 0;
-
-        // Horizontal movement (A/D/Left/Right)
-        if (this.keys.ArrowRight || this.keys.d) player.velocityX = player.speed;
-        if (this.keys.ArrowLeft || this.keys.a) player.velocityX = -player.speed;
+    render() {
+        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
         
-        // Vertical movement (W/S/Up/Down)
-        if (this.keys.ArrowDown || this.keys.s) player.velocityY = player.speed;
-        if (this.keys.ArrowUp || this.keys.w) player.velocityY = -player.speed;
+        // First-person perspective rendering
+        this.entities.sort((a,b) => b.z - a.z); // Depth sorting
+        this.entities.forEach(entity => {
+            this.ctx.save();
+            // Perspective projection
+            const scale = Math.min(1, 1000/(entity.z + 100));
+            const x = this.ctx.canvas.width/2 + (entity.x - this.player.x) * scale;
+            const y = this.ctx.canvas.height/2 - entity.y * scale;
+            this.ctx.translate(x, y);
+            this.ctx.scale(scale, scale);
+            entity.render(this.ctx);
+            this.ctx.restore();
+        });
     }
 
-    // ... (keep shootLaser() the same) ...
+    start() {
+        const gameLoop = (timestamp) => {
+            const deltaTime = timestamp - this.lastTime;
+            this.lastTime = timestamp;
+            
+            this.update(deltaTime);
+            this.render();
+            
+            requestAnimationFrame(gameLoop);
+        };
+        requestAnimationFrame(gameLoop);
+    }
 }
 
-// ... (keep rest of the code the same) ...
-    </script>
+class Player {
+    constructor() {
+        this.x = 0;
+        this.y = 50;
+        this.z = 0;
+        this.speed = 0.2;
+        this.health = 100;
+        this.rotation = 0;
+        this.weapon = {
+            cooldown: 0,
+            damage: 25,
+            spread: 0.1,
+            fireRate: 300
+        };
+    }
+
+    update(deltaTime) {
+        this.weapon.cooldown = Math.max(0, this.weapon.cooldown - deltaTime);
+    }
+
+    takeDamage(amount) {
+        this.health = Math.max(0, this.health - amount);
+        document.getElementById('health').textContent = this.health;
+    }
+
+    shoot() {
+        if(this.weapon.cooldown <= 0) {
+            this.weapon.cooldown = this.weapon.fireRate;
+            return new Bullet(
+                this.x + Math.sin(this.rotation) * 20,
+                this.y - 10,
+                this.z + Math.cos(this.rotation) * 20,
+                this.rotation + (Math.random() - 0.5) * this.weapon.spread
+            );
+        }
+        return null;
+    }
+}
+
+class Enemy {
+    constructor(x, z) {
+        this.x = x;
+        this.y = 50;
+        this.z = z;
+        this.speed = 0.1;
+        this.health = 100;
+        this.dead = false;
+    }
+
+    update(deltaTime) {
+        const dx = -this.x;
+        const dz = 1000 - this.z;
+        const dist = Math.sqrt(dx*dx + dz*dz);
+        this.x += (dx/dist) * this.speed * deltaTime;
+        this.z += (dz/dist) * this.speed * deltaTime;
+
+        if(this.z > 2000) this.dead = true;
+    }
+
+    render(ctx) {
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(-15, -30, 30, 60);
+    }
+}
+
+class Bullet {
+    constructor(x, y, z, angle) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+        this.speed = 1;
+        this.angle = angle;
+        this.range = 1000;
+        this.dead = false;
+    }
+
+    update(deltaTime) {
+        this.x += Math.sin(this.angle) * this.speed * deltaTime;
+        this.z += Math.cos(this.angle) * this.speed * deltaTime;
+        this.range -= deltaTime;
+        if(this.range <= 0) this.dead = true;
+    }
+
+    render(ctx) {
+        ctx.fillStyle = '#ffff00';
+        ctx.beginPath();
+        ctx.arc(0, 0, 3, 0, Math.PI*2);
+        ctx.fill();
+    }
+}
+
+class InputHandler {
+    constructor(canvas) {
+        this.keys = {};
+        this.canvas = canvas;
+        
+        window.addEventListener('keydown', e => this.keys[e.key] = true);
+        window.addEventListener('keyup', e => this.keys[e.key] = false);
+        canvas.addEventListener('mousemove', e => this.onMouseMove(e));
+        canvas.addEventListener('mousedown', () => this.mouseDown = true);
+        canvas.addEventListener('mouseup', () => this.mouseDown = false);
+    }
+
+    onMouseMove(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.mouseX = e.clientX - rect.left;
+        this.mouseY = e.clientY - rect.top;
+    }
+
+    update(deltaTime, engine) {
+        const player = engine.player;
+        if(!player) return;
+
+        // Movement
+        if(this.keys['w']) player.z += player.speed * deltaTime;
+        if(this.keys['s']) player.z -= player.speed * deltaTime;
+        if(this.keys['a']) player.x -= player.speed * deltaTime;
+        if(this.keys['d']) player.x += player.speed * deltaTime;
+
+        // Rotation based on mouse position
+        const centerX = engine.ctx.canvas.width/2;
+        player.rotation = (this.mouseX - centerX) / 200;
+
+        // Shooting
+        if(this.mouseDown) {
+            const bullet = player.shoot();
+            if(bullet) engine.addEntity(bullet);
+        }
+    }
+}
+
+class CollisionSystem {
+    update(deltaTime, engine) {
+        const bullets = engine.entities.filter(e => e instanceof Bullet);
+        const enemies = engine.entities.filter(e => e instanceof Enemy);
+
+        bullets.forEach(bullet => {
+            enemies.forEach(enemy => {
+                const dx = bullet.x - enemy.x;
+                const dz = bullet.z - enemy.z;
+                if(Math.sqrt(dx*dx + dz*dz) < 20) {
+                    enemy.health -= engine.player.weapon.damage;
+                    bullet.dead = true;
+                    if(enemy.health <= 0) {
+                        engine.score += 100;
+                        document.getElementById('score').textContent = engine.score;
+                        enemy.dead = true;
+                    }
+                }
+            });
+        });
+
+        enemies.forEach(enemy => {
+            const dz = enemy.z - engine.player.z;
+            if(dz < 20) {
+                engine.player.takeDamage(10);
+                enemy.dead = true;
+            }
+        });
+    }
+}
+
+class EnemySpawner {
+    update(deltaTime, engine) {
+        if(Math.random() < 0.02) {
+            const angle = Math.random() * Math.PI * 2;
+            const x = Math.sin(angle) * 500;
+            const z = engine.player.z + 1000;
+            engine.addEntity(new Enemy(x, z));
+        }
+    }
+}
+
+// Initialize the game
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = 800;
+    canvas.height = 600;
+
+    const engine = new GameEngine(ctx);
+    const player = new Player();
+    
+    engine.addEntity(player);
+    engine.addSystem(new InputHandler(canvas));
+    engine.addSystem(new EnemySpawner());
+    engine.addSystem(new CollisionSystem());
+    
+    engine.start();
+});
+</script>
 </body>
 </html>
