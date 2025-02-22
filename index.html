@@ -60,7 +60,7 @@ class GameEngine {
     }
 
     addSystem(system) {
-        system.setEngine(this);
+        system.setEngine(this); // Fixed: Now systems have setEngine method
         this.systems.push(system);
     }
 
@@ -72,12 +72,9 @@ class GameEngine {
 
     render() {
         this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-        
-        // First-person perspective rendering
-        this.entities.sort((a,b) => b.z - a.z); // Depth sorting
+        this.entities.sort((a,b) => b.z - a.z);
         this.entities.forEach(entity => {
             this.ctx.save();
-            // Perspective projection
             const scale = Math.min(1, 1000/(entity.z + 100));
             const x = this.ctx.canvas.width/2 + (entity.x - this.player.x) * scale;
             const y = this.ctx.canvas.height/2 - entity.y * scale;
@@ -197,6 +194,10 @@ class InputHandler {
     constructor(canvas) {
         this.keys = {};
         this.canvas = canvas;
+        this.engine = null;
+        this.mouseX = 0;
+        this.mouseY = 0;
+        this.mouseDown = false;
         
         window.addEventListener('keydown', e => this.keys[e.key] = true);
         window.addEventListener('keyup', e => this.keys[e.key] = false);
@@ -205,14 +206,18 @@ class InputHandler {
         canvas.addEventListener('mouseup', () => this.mouseDown = false);
     }
 
+    setEngine(engine) {
+        this.engine = engine;
+    }
+
     onMouseMove(e) {
         const rect = this.canvas.getBoundingClientRect();
         this.mouseX = e.clientX - rect.left;
         this.mouseY = e.clientY - rect.top;
     }
 
-    update(deltaTime, engine) {
-        const player = engine.player;
+    update(deltaTime) {
+        const player = this.engine.player;
         if(!player) return;
 
         // Movement
@@ -221,33 +226,41 @@ class InputHandler {
         if(this.keys['a']) player.x -= player.speed * deltaTime;
         if(this.keys['d']) player.x += player.speed * deltaTime;
 
-        // Rotation based on mouse position
-        const centerX = engine.ctx.canvas.width/2;
+        // Rotation
+        const centerX = this.engine.ctx.canvas.width/2;
         player.rotation = (this.mouseX - centerX) / 200;
 
         // Shooting
         if(this.mouseDown) {
             const bullet = player.shoot();
-            if(bullet) engine.addEntity(bullet);
+            if(bullet) this.engine.addEntity(bullet);
         }
     }
 }
 
 class CollisionSystem {
-    update(deltaTime, engine) {
-        const bullets = engine.entities.filter(e => e instanceof Bullet);
-        const enemies = engine.entities.filter(e => e instanceof Enemy);
+    constructor() {
+        this.engine = null;
+    }
+
+    setEngine(engine) {
+        this.engine = engine;
+    }
+
+    update(deltaTime) {
+        const bullets = this.engine.entities.filter(e => e instanceof Bullet);
+        const enemies = this.engine.entities.filter(e => e instanceof Enemy);
 
         bullets.forEach(bullet => {
             enemies.forEach(enemy => {
                 const dx = bullet.x - enemy.x;
                 const dz = bullet.z - enemy.z;
                 if(Math.sqrt(dx*dx + dz*dz) < 20) {
-                    enemy.health -= engine.player.weapon.damage;
+                    enemy.health -= this.engine.player.weapon.damage;
                     bullet.dead = true;
                     if(enemy.health <= 0) {
-                        engine.score += 100;
-                        document.getElementById('score').textContent = engine.score;
+                        this.engine.score += 100;
+                        document.getElementById('score').textContent = this.engine.score;
                         enemy.dead = true;
                     }
                 }
@@ -255,9 +268,9 @@ class CollisionSystem {
         });
 
         enemies.forEach(enemy => {
-            const dz = enemy.z - engine.player.z;
+            const dz = enemy.z - this.engine.player.z;
             if(dz < 20) {
-                engine.player.takeDamage(10);
+                this.engine.player.takeDamage(10);
                 enemy.dead = true;
             }
         });
@@ -265,12 +278,20 @@ class CollisionSystem {
 }
 
 class EnemySpawner {
-    update(deltaTime, engine) {
+    constructor() {
+        this.engine = null;
+    }
+
+    setEngine(engine) {
+        this.engine = engine;
+    }
+
+    update(deltaTime) {
         if(Math.random() < 0.02) {
             const angle = Math.random() * Math.PI * 2;
             const x = Math.sin(angle) * 500;
-            const z = engine.player.z + 1000;
-            engine.addEntity(new Enemy(x, z));
+            const z = this.engine.player.z + 1000;
+            this.engine.addEntity(new Enemy(x, z));
         }
     }
 }
