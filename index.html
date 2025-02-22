@@ -3,99 +3,15 @@
 <head>
     <title>FPS Shooter</title>
     <style>
-        #game-container {
-            position: relative;
-            width: 800px;
-            margin: 0 auto;
-        }
-        #game-canvas {
-            border: 2px solid white;
-            background-color: #111;
-            cursor: crosshair;
-        }
-        #hud {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            color: white;
-            font-family: Arial, sans-serif;
-            pointer-events: none;
-        }
-        .crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #ff0000;
-            font-size: 24px;
-            pointer-events: none;
-        }
+        /* ... keep existing styles the same ... */
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <canvas id="game-canvas"></canvas>
-        <div id="hud">
-            <span>Score: <span id="score">0</span></span>
-            <span>Health: <span id="health">100</span></span>
-        </div>
-        <div class="crosshair">+</div>
-    </div>
+    <!-- ... keep existing HTML structure the same ... -->
 
 <script>
 class GameEngine {
-    constructor(ctx) {
-        this.ctx = ctx;
-        this.entities = [];
-        this.systems = [];
-        this.lastTime = 0;
-        this.score = 0;
-        this.player = null;
-    }
-
-    addEntity(entity) {
-        this.entities.push(entity);
-        if(entity instanceof Player) this.player = entity;
-    }
-
-    addSystem(system) {
-        system.setEngine(this);  // Now properly implemented in all systems
-        this.systems.push(system);
-    }
-
-    update(deltaTime) {
-        this.systems.forEach(system => system.update(deltaTime));
-        this.entities = this.entities.filter(e => !e.dead);
-        this.entities.forEach(entity => entity.update(deltaTime));
-    }
-
-    render() {
-        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-        this.entities.sort((a,b) => b.z - a.z);
-        this.entities.forEach(entity => {
-            this.ctx.save();
-            const scale = Math.min(1, 1000/(entity.z + 100));
-            const x = this.ctx.canvas.width/2 + (entity.x - this.player.x) * scale;
-            const y = this.ctx.canvas.height/2 - entity.y * scale;
-            this.ctx.translate(x, y);
-            this.ctx.scale(scale, scale);
-            entity.render(this.ctx);
-            this.ctx.restore();
-        });
-    }
-
-    start() {
-        const gameLoop = (timestamp) => {
-            const deltaTime = timestamp - this.lastTime;
-            this.lastTime = timestamp;
-            
-            this.update(deltaTime);
-            this.render();
-            
-            requestAnimationFrame(gameLoop);
-        };
-        requestAnimationFrame(gameLoop);
-    }
+    // ... keep existing GameEngine implementation the same ...
 }
 
 class Player {
@@ -106,6 +22,8 @@ class Player {
         this.speed = 0.2;
         this.health = 100;
         this.rotation = 0;
+        this.width = 30;  // Added size properties
+        this.height = 50; // Added size properties
         this.weapon = {
             cooldown: 0,
             damage: 25,
@@ -114,49 +32,28 @@ class Player {
         };
     }
 
-    update(deltaTime) {
-        this.weapon.cooldown = Math.max(0, this.weapon.cooldown - deltaTime);
+    // ADDED MISSING RENDER METHOD
+    render(ctx) {
+        ctx.fillStyle = '#0000ff';
+        ctx.fillRect(
+            -this.width/2, 
+            -this.height/2,
+            this.width,
+            this.height
+        );
     }
 
-    takeDamage(amount) {
-        this.health = Math.max(0, this.health - amount);
-        document.getElementById('health').textContent = this.health;
-    }
-
-    shoot() {
-        if(this.weapon.cooldown <= 0) {
-            this.weapon.cooldown = this.weapon.fireRate;
-            return new Bullet(
-                this.x + Math.sin(this.rotation) * 20,
-                this.y - 10,
-                this.z + Math.cos(this.rotation) * 20,
-                this.rotation + (Math.random() - 0.5) * this.weapon.spread
-            );
-        }
-        return null;
-    }
+    // ... keep rest of Player methods the same ...
 }
 
 class Enemy {
     constructor(x, z) {
-        this.x = x;
-        this.y = 50;
-        this.z = z;
-        this.speed = 0.1;
-        this.health = 100;
-        this.dead = false;
+        // ... existing constructor ... 
     }
 
-    update(deltaTime) {
-        const dx = -this.x;
-        const dz = 1000 - this.z;
-        const dist = Math.sqrt(dx*dx + dz*dz);
-        this.x += (dx/dist) * this.speed * deltaTime;
-        this.z += (dz/dist) * this.speed * deltaTime;
+    // ... keep existing update method ...
 
-        if(this.z > 2000) this.dead = true;
-    }
-
+    // ENSURE RENDER METHOD EXISTS
     render(ctx) {
         ctx.fillStyle = '#ff0000';
         ctx.fillRect(-15, -30, 30, 60);
@@ -165,22 +62,12 @@ class Enemy {
 
 class Bullet {
     constructor(x, y, z, angle) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.speed = 1;
-        this.angle = angle;
-        this.range = 1000;
-        this.dead = false;
+        // ... existing constructor ...
     }
 
-    update(deltaTime) {
-        this.x += Math.sin(this.angle) * this.speed * deltaTime;
-        this.z += Math.cos(this.angle) * this.speed * deltaTime;
-        this.range -= deltaTime;
-        if(this.range <= 0) this.dead = true;
-    }
+    // ... keep existing update method ...
 
+    // ENSURE RENDER METHOD EXISTS
     render(ctx) {
         ctx.fillStyle = '#ffff00';
         ctx.beginPath();
@@ -189,128 +76,11 @@ class Bullet {
     }
 }
 
-class InputHandler {
-    constructor(canvas) {
-        this.canvas = canvas;
-        this.keys = {};
-        this.mouseX = 0;
-        this.mouseY = 0;
-        this.mouseDown = false;
-        this.engine = null;
-
-        window.addEventListener('keydown', e => this.keys[e.key] = true);
-        window.addEventListener('keyup', e => this.keys[e.key] = false);
-        canvas.addEventListener('mousemove', e => this.onMouseMove(e));
-        canvas.addEventListener('mousedown', () => this.mouseDown = true);
-        canvas.addEventListener('mouseup', () => this.mouseDown = false);
-    }
-
-    setEngine(engine) {
-        this.engine = engine;
-    }
-
-    onMouseMove(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        this.mouseX = e.clientX - rect.left;
-        this.mouseY = e.clientY - rect.top;
-    }
-
-    update(deltaTime) {
-        const player = this.engine.player;
-        if(!player) return;
-
-        // Movement
-        if(this.keys['w']) player.z += player.speed * deltaTime;
-        if(this.keys['s']) player.z -= player.speed * deltaTime;
-        if(this.keys['a']) player.x -= player.speed * deltaTime;
-        if(this.keys['d']) player.x += player.speed * deltaTime;
-
-        // Rotation
-        const centerX = this.engine.ctx.canvas.width/2;
-        player.rotation = (this.mouseX - centerX) / 200;
-
-        // Shooting
-        if(this.mouseDown) {
-            const bullet = player.shoot();
-            if(bullet) this.engine.addEntity(bullet);
-        }
-    }
-}
-
-class CollisionSystem {
-    constructor() {
-        this.engine = null;
-    }
-
-    setEngine(engine) {
-        this.engine = engine;
-    }
-
-    update(deltaTime) {
-        const bullets = this.engine.entities.filter(e => e instanceof Bullet);
-        const enemies = this.engine.entities.filter(e => e instanceof Enemy);
-
-        bullets.forEach(bullet => {
-            enemies.forEach(enemy => {
-                const dx = bullet.x - enemy.x;
-                const dz = bullet.z - enemy.z;
-                if(Math.sqrt(dx*dx + dz*dz) < 20) {
-                    enemy.health -= this.engine.player.weapon.damage;
-                    bullet.dead = true;
-                    if(enemy.health <= 0) {
-                        this.engine.score += 100;
-                        document.getElementById('score').textContent = this.engine.score;
-                        enemy.dead = true;
-                    }
-                }
-            });
-        });
-
-        enemies.forEach(enemy => {
-            const dz = enemy.z - this.engine.player.z;
-            if(dz < 20) {
-                this.engine.player.takeDamage(10);
-                enemy.dead = true;
-            }
-        });
-    }
-}
-
-class EnemySpawner {
-    constructor() {
-        this.engine = null;
-    }
-
-    setEngine(engine) {
-        this.engine = engine;
-    }
-
-    update(deltaTime) {
-        if(Math.random() < 0.02) {
-            const angle = Math.random() * Math.PI * 2;
-            const x = Math.sin(angle) * 500;
-            const z = this.engine.player.z + 1000;
-            this.engine.addEntity(new Enemy(x, z));
-        }
-    }
-}
+// ... keep InputHandler, CollisionSystem, EnemySpawner the same ...
 
 // Initialize the game
 document.addEventListener('DOMContentLoaded', () => {
-    const canvas = document.getElementById('game-canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = 800;
-    canvas.height = 600;
-
-    const engine = new GameEngine(ctx);
-    const player = new Player();
-    
-    engine.addEntity(player);
-    engine.addSystem(new InputHandler(canvas));
-    engine.addSystem(new EnemySpawner());
-    engine.addSystem(new CollisionSystem());
-    
-    engine.start();
+    // ... keep initialization code the same ...
 });
 </script>
 </body>
