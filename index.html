@@ -1,851 +1,978 @@
+<!-- index.html -->
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Canvas FPS Game</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #000;
-            font-family: Arial, sans-serif;
-        }
-        #gameCanvas {
-            display: block;
-            width: 100%;
-            height: 100vh;
-        }
-        .game-ui {
-            position: absolute;
-            color: #fff;
-            padding: 10px;
-            pointer-events: none;
-        }
-        #hud {
-            top: 0;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-        }
-        #menu {
-            display: flex;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-        }
-        .button {
-            background-color: #4CAF50;
-            border: none;
-            color: white;
-            padding: 15px 32px;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            font-size: 16px;
-            margin: 10px;
-            cursor: pointer;
-            border-radius: 5px;
-            pointer-events: auto;
-        }
-        .button:hover {
-            background-color: #45a049;
-        }
-        #levelComplete {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-        }
-        #gameOver {
-            display: none;
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 10;
-        }
-        #crosshair {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            width: 20px;
-            height: 20px;
-            margin-left: -10px;
-            margin-top: -10px;
-            pointer-events: none;
-        }
-        #crosshair::before, #crosshair::after {
-            content: '';
-            position: absolute;
-            background-color: #fff;
-        }
-        #crosshair::before {
-            top: 9px;
-            left: 0;
-            width: 20px;
-            height: 2px;
-        }
-        #crosshair::after {
-            top: 0;
-            left: 9px;
-            width: 2px;
-            height: 20px;
-        }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procedural FPS</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    
-    <div id="crosshair"></div>
-    
-    <div id="hud" class="game-ui">
-        <div>Health: <span id="health">100</span></div>
-        <div>Ammo: <span id="ammo">30</span></div>
-        <div>Score: <span id="score">0</span></div>
-        <div>Level: <span id="level">1</span></div>
-        <div>Objectives: <span id="objectives">0/5</span></div>
-    </div>
-    
-    <div id="menu">
-        <h1>TACTICAL OPERATIONS</h1>
-        <p>A tactical team-based FPS game</p>
-        <button class="button" id="startButton">Start Game</button>
-        <button class="button" id="instructionsButton">Instructions</button>
-    </div>
-    
-    <div id="levelComplete">
-        <h1>Level Complete!</h1>
-        <p>Score: <span id="levelScore">0</span></p>
-        <button class="button" id="nextLevelButton">Next Level</button>
-    </div>
-    
-    <div id="gameOver">
-        <h1>Game Over</h1>
-        <p>Final Score: <span id="finalScore">0</span></p>
-        <button class="button" id="restartButton">Restart Game</button>
+    <div id="game-container">
+        <canvas id="game-canvas"></canvas>
+        <div id="hud">
+            <div id="health-bar">
+                <div id="health-fill"></div>
+            </div>
+            <div id="ammo-counter">30 / 90</div>
+            <div id="weapon-name">Assault Rifle</div>
+            <div id="score">Score: 0</div>
+        </div>
+        <div id="crosshair">+</div>
     </div>
 
-    <script>
-        // Game Engine Implementation
-        // This implements the Single Responsibility Principle by separating concerns into different classes
+    <div id="menu" class="active">
+        <h1>PROCEDURAL FPS</h1>
+        <button id="start-button">Start Game</button>
+        <div id="weapon-selection">
+            <h2>Select Starting Weapon:</h2>
+            <div class="weapon-option selected" data-weapon="assaultRifle">
+                <h3>Assault Rifle</h3>
+                <p>Balanced weapon with moderate fire rate and damage</p>
+            </div>
+            <div class="weapon-option" data-weapon="shotgun">
+                <h3>Shotgun</h3>
+                <p>High damage at close range, slow fire rate</p>
+            </div>
+            <div class="weapon-option" data-weapon="smg">
+                <h3>SMG</h3>
+                <p>High fire rate, lower damage per shot</p>
+            </div>
+        </div>
+        <div id="difficulty">
+            <h2>Difficulty:</h2>
+            <select id="difficulty-select">
+                <option value="easy">Easy</option>
+                <option value="normal" selected>Normal</option>
+                <option value="hard">Hard</option>
+            </select>
+        </div>
+    </div>
+
+    <div id="game-over" class="hidden">
+        <h1>GAME OVER</h1>
+        <h2>Score: <span id="final-score">0</span></h2>
+        <button id="restart-button">Play Again</button>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/input.js"></script>
+    <script src="js/weapons.js"></script>
+    <script src="js/enemy.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/procedural-generator.js"></script>
+    <script src="js/game.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
+
+/* styles.css */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: #000;
+    color: #fff;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+#game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+#hud {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    right: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    pointer-events: none;
+}
+
+#health-bar {
+    width: 200px;
+    height: 20px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 2px solid #fff;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+#health-fill {
+    width: 100%;
+    height: 100%;
+    background-color: #f00;
+    transition: width 0.3s ease;
+}
+
+#ammo-counter {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+#weapon-name {
+    font-size: 18px;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+#score {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+}
+
+#crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 24px;
+    color: rgba(255, 255, 255, 0.8);
+    pointer-events: none;
+}
+
+#menu, #game-over {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background-color: rgba(0, 0, 0, 0.8);
+    z-index: 10;
+}
+
+.hidden {
+    display: none !important;
+}
+
+h1 {
+    font-size: 48px;
+    margin-bottom: 20px;
+    color: #f00;
+    text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
+}
+
+h2 {
+    font-size: 24px;
+    margin-bottom: 10px;
+}
+
+button {
+    padding: 15px 30px;
+    font-size: 18px;
+    background-color: #f00;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 10px 0;
+    transition: all 0.2s ease;
+}
+
+button:hover {
+    background-color: #ff3333;
+    transform: scale(1.05);
+}
+
+#weapon-selection {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin: 20px 0;
+    width: 80%;
+    max-width: 600px;
+}
+
+.weapon-option {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    background-color: rgba(50, 50, 50, 0.5);
+    border: 2px solid transparent;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.weapon-option:hover {
+    background-color: rgba(70, 70, 70, 0.7);
+}
+
+.weapon-option.selected {
+    border-color: #f00;
+    background-color: rgba(100, 50, 50, 0.5);
+}
+
+#difficulty {
+    margin: 20px 0;
+}
+
+select {
+    padding: 10px;
+    font-size: 16px;
+    background-color: #333;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 5px;
+}
+
+/* Pickup animations */
+.pickup-notification {
+    position: absolute;
+    top: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 18px;
+    animation: fadeUp 2s forwards;
+}
+
+@keyframes fadeUp {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 20px);
+    }
+    20% {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+    80% {
+        opacity: 1;
+        transform: translate(-50%, 0);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -20px);
+    }
+}
+
+/* Damage indicator */
+.damage-indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 0, 0, 0.3);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.damage-indicator.active {
+    opacity: 1;
+}
+
+/* js/utils.js */
+/**
+ * Utility functions for the game
+ */
+const Utils = {
+    /**
+     * Generate a random number between min and max (inclusive)
+     */
+    randomRange: (min, max) => {
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    },
+    
+    /**
+     * Generate a random position within a room
+     */
+    randomPositionInRoom: (room) => {
+        const padding = 1; // Padding from walls
+        return new THREE.Vector3(
+            Utils.randomRange(room.position.x - room.width / 2 + padding, room.position.x + room.width / 2 - padding),
+            0,
+            Utils.randomRange(room.position.z - room.depth / 2 + padding, room.position.z + room.depth / 2 - padding)
+        );
+    },
+    
+    /**
+     * Calculate distance between two Vector3 points
+     */
+    distance: (point1, point2) => {
+        return point1.distanceTo(point2);
+    },
+    
+    /**
+     * Check if two objects collide (simple box collision)
+     */
+    checkCollision: (obj1, obj2, threshold = 1) => {
+        const distance = Utils.distance(obj1.position, obj2.position);
+        return distance < threshold;
+    },
+    
+    /**
+     * Create a text notification that fades up
+     */
+    createNotification: (text, duration = 2000) => {
+        const notification = document.createElement('div');
+        notification.className = 'pickup-notification';
+        notification.textContent = text;
+        document.getElementById('game-container').appendChild(notification);
         
-        // Game configuration - responsible for game settings (Single Responsibility)
-        class GameConfig {
-            constructor() {
-                this.mouseSensitivity = 0.2;
-                this.moveSpeed = 0.1;
-                this.gravity = 0.05;
-                this.jumpForce = 0.5;
-                this.maxHealth = 100;
-                this.maxAmmo = 30;
-                this.reloadTime = 2000;
+        setTimeout(() => {
+            notification.remove();
+        }, duration);
+    },
+    
+    /**
+     * Show damage indicator effect
+     */
+    showDamageIndicator: () => {
+        const damageIndicator = document.createElement('div');
+        damageIndicator.className = 'damage-indicator active';
+        document.getElementById('game-container').appendChild(damageIndicator);
+        
+        setTimeout(() => {
+            damageIndicator.classList.remove('active');
+            setTimeout(() => {
+                damageIndicator.remove();
+            }, 300);
+        }, 200);
+    }
+};
+
+/* js/config.js */
+/**
+ * Game configuration constants
+ */
+const Config = {
+    // Player settings
+    player: {
+        height: 1.8,
+        moveSpeed: 5,
+        sprintSpeed: 8,
+        jumpForce: 7,
+        gravity: 20,
+        health: 100,
+        damageRecoveryTime: 500
+    },
+    
+    // Weapon settings
+    weapons: {
+        assaultRifle: {
+            name: "Assault Rifle",
+            damage: 20,
+            fireRate: 0.1, // seconds between shots
+            ammoPerClip: 30,
+            maxAmmo: 90,
+            reloadTime: 2.0,
+            spread: 0.03,
+            recoil: 0.05,
+            automatic: true,
+            bulletSpeed: 50,
+            bulletLifetime: 1000,
+            model: {
+                // Three.js model parameters would go here
+                color: 0x555555,
+                length: 1.0,
+                width: 0.1,
+                height: 0.2
+            },
+            sound: {
+                fire: "sound/assault_fire.mp3",
+                reload: "sound/assault_reload.mp3",
+                empty: "sound/gun_empty.mp3"
+            }
+        },
+        shotgun: {
+            name: "Shotgun",
+            damage: 15, // per pellet
+            fireRate: 0.8,
+            ammoPerClip: 6,
+            maxAmmo: 24,
+            reloadTime: 2.5,
+            pellets: 8,
+            spread: 0.08,
+            recoil: 0.2,
+            automatic: false,
+            bulletSpeed: 40,
+            bulletLifetime: 800,
+            model: {
+                color: 0x8B4513,
+                length: 0.8,
+                width: 0.15,
+                height: 0.25
+            },
+            sound: {
+                fire: "sound/shotgun_fire.mp3",
+                reload: "sound/shotgun_reload.mp3",
+                empty: "sound/gun_empty.mp3"
+            }
+        },
+        smg: {
+            name: "SMG",
+            damage: 10,
+            fireRate: 0.06,
+            ammoPerClip: 40,
+            maxAmmo: 120,
+            reloadTime: 1.5,
+            spread: 0.05,
+            recoil: 0.03,
+            automatic: true,
+            bulletSpeed: 45,
+            bulletLifetime: 900,
+            model: {
+                color: 0x333333,
+                length: 0.6,
+                width: 0.1,
+                height: 0.15
+            },
+            sound: {
+                fire: "sound/smg_fire.mp3",
+                reload: "sound/smg_reload.mp3",
+                empty: "sound/gun_empty.mp3"
+            }
+        },
+        pistol: {
+            name: "Pistol",
+            damage: 15,
+            fireRate: 0.3,
+            ammoPerClip: 12,
+            maxAmmo: 60,
+            reloadTime: 1.2,
+            spread: 0.02,
+            recoil: 0.04,
+            automatic: false,
+            bulletSpeed: 40,
+            bulletLifetime: 800,
+            model: {
+                color: 0x222222,
+                length: 0.3,
+                width: 0.08,
+                height: 0.15
+            },
+            sound: {
+                fire: "sound/pistol_fire.mp3",
+                reload: "sound/pistol_reload.mp3",
+                empty: "sound/gun_empty.mp3"
+            }
+        },
+        sniperRifle: {
+            name: "Sniper Rifle",
+            damage: 80,
+            fireRate: 1.2,
+            ammoPerClip: 5,
+            maxAmmo: 15,
+            reloadTime: 2.5,
+            spread: 0.005,
+            recoil: 0.3,
+            automatic: false,
+            bulletSpeed: 70,
+            bulletLifetime: 1500,
+            model: {
+                color: 0x444444,
+                length: 1.2,
+                width: 0.1,
+                height: 0.2
+            },
+            sound: {
+                fire: "sound/sniper_fire.mp3",
+                reload: "sound/sniper_reload.mp3",
+                empty: "sound/gun_empty.mp3"
+            }
+        }
+    },
+    
+    // Enemy settings
+    enemies: {
+        basic: {
+            health: 50,
+            damage: 10,
+            speed: 3,
+            attackRate: 1,
+            detectRange: 15,
+            score: 100,
+            color: 0xFF0000
+        },
+        fast: {
+            health: 30,
+            damage: 8,
+            speed: 5,
+            attackRate: 0.7,
+            detectRange: 12,
+            score: 150,
+            color: 0xFFAA00
+        },
+        heavy: {
+            health: 120,
+            damage: 15,
+            speed: 1.5,
+            attackRate: 2,
+            detectRange: 10,
+            score: 200,
+            color: 0x880000
+        },
+        boss: {
+            health: 500,
+            damage: 25,
+            speed: 2,
+            attackRate: 1.5,
+            detectRange: 20,
+            score: 1000,
+            color: 0x330000,
+            scale: 2
+        }
+    },
+    
+    // Procedural generation settings
+    generation: {
+        roomMinSize: 6,
+        roomMaxSize: 15,
+        roomsPerLevel: {
+            easy: { min: 5, max: 8 },
+            normal: { min: 8, max: 12 },
+            hard: { min: 10, max: 15 }
+        },
+        corridorWidth: 2,
+        enemiesPerRoom: {
+            easy: { min: 1, max: 3 },
+            normal: { min: 2, max: 5 },
+            hard: { min: 3, max: 7 }
+        },
+        bossFrequency: {
+            easy: 0.1,
+            normal: 0.2,
+            hard: 0.3
+        },
+        pickupFrequency: {
+            easy: 0.7,
+            normal: 0.5,
+            hard: 0.3
+        }
+    },
+    
+    // Pickup settings
+    pickups: {
+        health: {
+            amount: 25,
+            color: 0x00FF00
+        },
+        armor: {
+            amount: 25,
+            color: 0x0000FF
+        },
+        ammo: {
+            amount: 30,
+            color: 0xFFFF00
+        }
+    }
+};
+
+/* js/input.js */
+/**
+ * Handles user input for the game
+ */
+class InputHandler {
+    constructor(game) {
+        this.game = game;
+        this.keys = {};
+        this.mouse = {
+            x: 0,
+            y: 0,
+            isDragging: false
+        };
+        this.mouseSensitivity = 0.002;
+        this.setupEventListeners();
+    }
+    
+    setupEventListeners() {
+        // Keyboard events
+        document.addEventListener('keydown', this.handleKeyDown.bind(this));
+        document.addEventListener('keyup', this.handleKeyUp.bind(this));
+        
+        // Mouse events
+        document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        document.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+        
+        // Pointer lock for FPS camera control
+        const canvas = document.getElementById('game-canvas');
+        canvas.addEventListener('click', () => {
+            if (this.game.isRunning && !this.game.isPaused) {
+                canvas.requestPointerLock = canvas.requestPointerLock || 
+                                           canvas.mozRequestPointerLock || 
+                                           canvas.webkitRequestPointerLock;
+                canvas.requestPointerLock();
+            }
+        });
+        
+        // Handle pointer lock change
+        document.addEventListener('pointerlockchange', this.handleLockChange.bind(this));
+        document.addEventListener('mozpointerlockchange', this.handleLockChange.bind(this));
+        document.addEventListener('webkitpointerlockchange', this.handleLockChange.bind(this));
+    }
+    
+    handleKeyDown(event) {
+        this.keys[event.code] = true;
+        
+        // Handle weapon switching with number keys
+        if (event.code.startsWith('Digit') && this.game.isRunning && !this.game.isPaused) {
+            const weaponIndex = parseInt(event.code.replace('Digit', '')) - 1;
+            if (weaponIndex >= 0 && weaponIndex < this.game.player.weapons.length) {
+                this.game.player.switchWeapon(weaponIndex);
             }
         }
         
-        // Vector class - responsible for vector operations (Single Responsibility)
-        class Vector {
-            constructor(x = 0, y = 0, z = 0) {
-                this.x = x;
-                this.y = y;
-                this.z = z;
-            }
+        // Pause game with Escape
+        if (event.code === 'Escape' && this.game.isRunning) {
+            this.game.togglePause();
+        }
+    }
+    
+    handleKeyUp(event) {
+        this.keys[event.code] = false;
+    }
+    
+    handleMouseMove(event) {
+        if (this.mouse.isDragging && this.game.isRunning && !this.game.isPaused) {
+            const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+            const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
             
-            add(v) {
-                return new Vector(this.x + v.x, this.y + v.y, this.z + v.z);
-            }
-            
-            subtract(v) {
-                return new Vector(this.x - v.x, this.y - v.y, this.z - v.z);
-            }
-            
-            scale(s) {
-                return new Vector(this.x * s, this.y * s, this.z * s);
-            }
-            
-            length() {
-                return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z);
-            }
-            
-            normalize() {
-                const len = this.length();
-                if (len === 0) return new Vector();
-                return new Vector(this.x / len, this.y / len, this.z / len);
-            }
-            
-            dot(v) {
-                return this.x * v.x + this.y * v.y + this.z * v.z;
+            this.game.player.rotateCamera(
+                -movementY * this.mouseSensitivity,
+                -movementX * this.mouseSensitivity
+            );
+        }
+    }
+    
+    handleMouseDown(event) {
+        if (this.game.isRunning && !this.game.isPaused) {
+            if (event.button === 0) { // Left click
+                this.mouse.isDragging = true;
+                this.game.player.startFiring();
             }
         }
-        
-        // Camera class - responsible for managing the player's view (Single Responsibility)
-        class Camera {
-            constructor(position, direction) {
-                this.position = position || new Vector(0, 1.7, 0);
-                this.direction = direction || new Vector(1, 0, 0);
-                this.pitch = 0;
-                this.yaw = 0;
-            }
-            
-            rotate(dx, dy) {
-                this.yaw += dx;
-                this.pitch += dy;
-                
-                // Limit pitch to avoid flipping
-                this.pitch = Math.max(-Math.PI/2 + 0.1, Math.min(Math.PI/2 - 0.1, this.pitch));
-                
-                // Update direction vector
-                this.direction.x = Math.cos(this.yaw) * Math.cos(this.pitch);
-                this.direction.y = Math.sin(this.pitch);
-                this.direction.z = Math.sin(this.yaw) * Math.cos(this.pitch);
-                this.direction = this.direction.normalize();
-            }
-            
-            moveForward(distance) {
-                const moveVec = new Vector(
-                    Math.cos(this.yaw),
-                    0,
-                    Math.sin(this.yaw)
-                ).normalize().scale(distance);
-                
-                return this.position.add(moveVec);
-            }
-            
-            moveRight(distance) {
-                const moveVec = new Vector(
-                    Math.cos(this.yaw + Math.PI/2),
-                    0,
-                    Math.sin(this.yaw + Math.PI/2)
-                ).normalize().scale(distance);
-                
-                return this.position.add(moveVec);
+    }
+    
+    handleMouseUp(event) {
+        if (event.button === 0) { // Left click
+            this.mouse.isDragging = false;
+            this.game.player.stopFiring();
+        }
+    }
+    
+    handleLockChange() {
+        if (document.pointerLockElement === document.getElementById('game-canvas') ||
+            document.mozPointerLockElement === document.getElementById('game-canvas') ||
+            document.webkitPointerLockElement === document.getElementById('game-canvas')) {
+            this.mouse.isDragging = true;
+        } else {
+            this.mouse.isDragging = false;
+            if (this.game.isRunning && !this.game.isPaused) {
+                this.game.togglePause();
             }
         }
+    }
+    
+    isKeyPressed(keyCode) {
+        return this.keys[keyCode] === true;
+    }
+    
+    getMovementDirection() {
+        const direction = new THREE.Vector3(0, 0, 0);
         
-        // Entity interface - defines common methods for game objects (Open/Closed Principle)
-        class Entity {
-            constructor(position, size, type) {
-                this.position = position || new Vector();
-                this.size = size || new Vector(1, 1, 1);
-                this.type = type || 'generic';
-                this.id = Math.random().toString(36).substr(2, 9);
-            }
-            
-            update(deltaTime) {
-                // To be implemented by subclasses
-            }
-            
-            render(renderer) {
-                // To be implemented by subclasses
-            }
-            
-            collidesWith(entity) {
-                const dx = Math.abs(this.position.x - entity.position.x);
-                const dz = Math.abs(this.position.z - entity.position.z);
-                
-                return dx < (this.size.x + entity.size.x) / 2 &&
-                       dz < (this.size.z + entity.size.z) / 2;
-            }
+        if (this.isKeyPressed('KeyW')) direction.z -= 1;
+        if (this.isKeyPressed('KeyS')) direction.z += 1;
+        if (this.isKeyPressed('KeyA')) direction.x -= 1;
+        if (this.isKeyPressed('KeyD')) direction.x += 1;
+        
+        // Normalize if moving diagonally
+        if (direction.length() > 0) {
+            direction.normalize();
         }
         
-        // Actor class - base class for characters (Liskov Substitution Principle)
-        class Actor extends Entity {
-            constructor(position, size, type, health) {
-                super(position, size, type);
-                this.health = health || 100;
-                this.velocity = new Vector();
-                this.onGround = false;
-            }
-            
-            takeDamage(amount) {
-                this.health -= amount;
-                return this.health <= 0;
-            }
-            
-            update(deltaTime, world) {
-                // Apply gravity
-                if (!this.onGround) {
-                    this.velocity.y -= world.config.gravity;
-                }
-                
-                // Update position
-                this.position = this.position.add(this.velocity);
-                
-                // Floor collision
-                if (this.position.y < this.size.y / 2) {
-                    this.position.y = this.size.y / 2;
-                    this.velocity.y = 0;
-                    this.onGround = true;
-                } else {
-                    this.onGround = false;
-                }
-                
-                // World boundaries
-                const bounds = 50; // Map boundary
-                if (Math.abs(this.position.x) > bounds) {
-                    this.position.x = Math.sign(this.position.x) * bounds;
-                }
-                if (Math.abs(this.position.z) > bounds) {
-                    this.position.z = Math.sign(this.position.z) * bounds;
-                }
-                
-                // Obstacle collision
-                for (const obstacle of world.obstacles) {
-                    if (this.collidesWith(obstacle)) {
-                        // Simple collision response - push away
-                        const dx = this.position.x - obstacle.position.x;
-                        const dz = this.position.z - obstacle.position.z;
-                        
-                        if (Math.abs(dx) > Math.abs(dz)) {
-                            this.position.x = obstacle.position.x + Math.sign(dx) * (this.size.x + obstacle.size.x) / 2;
-                        } else {
-                            this.position.z = obstacle.position.z + Math.sign(dz) * (this.size.z + obstacle.size.z) / 2;
-                        }
-                    }
-                }
-            }
+        return direction;
+    }
+    
+    isJumping() {
+        return this.isKeyPressed('Space');
+    }
+    
+    isSprinting() {
+        return this.isKeyPressed('ShiftLeft');
+    }
+    
+    isReloading() {
+        return this.isKeyPressed('KeyR');
+    }
+}
+
+/* js/weapons.js */
+/**
+ * Weapon system following SOLID principles
+ */
+
+// Base Weapon class (Abstract)
+class Weapon {
+    constructor(config) {
+        this.name = config.name;
+        this.damage = config.damage;
+        this.fireRate = config.fireRate;
+        this.ammoPerClip = config.ammoPerClip;
+        this.maxAmmo = config.maxAmmo;
+        this.reloadTime = config.reloadTime;
+        this.spread = config.spread;
+        this.recoil = config.recoil;
+        this.automatic = config.automatic;
+        this.bulletSpeed = config.bulletSpeed;
+        this.bulletLifetime = config.bulletLifetime;
+        this.modelConfig = config.model;
+        this.soundConfig = config.sound;
+        
+        // State variables
+        this.currentAmmo = this.ammoPerClip;
+        this.reserveAmmo = this.maxAmmo;
+        this.isReloading = false;
+        this.lastFired = 0;
+        this.isFiring = false;
+        
+        // Reference to game objects
+        this.player = null;
+        this.scene = null;
+        this.camera = null;
+        
+        // Bullet pool
+        this.bullets = [];
+        
+        // Model
+        this.model = null;
+    }
+    
+    // Initialize weapon with references
+    init(player, scene, camera) {
+        this.player = player;
+        this.scene = scene;
+        this.camera = camera;
+        this.createModel();
+    }
+    
+    // Create weapon model
+    createModel() {
+        // Create a simple representation of the weapon
+        const geometry = new THREE.BoxGeometry(
+            this.modelConfig.length, 
+            this.modelConfig.height, 
+            this.modelConfig.width
+        );
+        const material = new THREE.MeshStandardMaterial({ color: this.modelConfig.color });
+        this.model = new THREE.Mesh(geometry, material);
+        
+        // Position the weapon relative to the camera
+        this.model.position.set(0.3, -0.2, -0.5);
+        this.camera.add(this.model);
+    }
+    
+    // Handle firing logic
+    startFiring() {
+        this.isFiring = true;
+        this.tryToFire();
+    }
+    
+    stopFiring() {
+        this.isFiring = false;
+    }
+    
+    tryToFire() {
+        if (!this.isFiring) return;
+        
+        const now = performance.now();
+        if (now - this.lastFired < this.fireRate * 1000) {
+            // Not enough time has passed since last shot
+            requestAnimationFrame(this.tryToFire.bind(this));
+            return;
         }
         
-        // Player class - represents the user-controlled character (Inheritance)
-        class Player extends Actor {
-            constructor(position) {
-                super(position, new Vector(0.8, 1.8, 0.8), 'player', 100);
-                this.camera = new Camera(this.position.add(new Vector(0, 0.8, 0)));
-                this.moveSpeed = 0.15;
-                this.ammo = 30;
-                this.score = 0;
-                this.objectives = 0;
-                this.isReloading = false;
-                this.team = 'blue';
+        if (this.isReloading) {
+            // Can't fire while reloading
+            if (this.automatic) {
+                requestAnimationFrame(this.tryToFire.bind(this));
             }
-            
-            update(deltaTime, world) {
-                super.update(deltaTime, world);
-                
-                // Update camera position to follow player
-                this.camera.position = this.position.add(new Vector(0, 0.8, 0));
-            }
-            
-            shoot() {
-                if (this.ammo <= 0 || this.isReloading) {
-                    return null;
-                }
-                
-                this.ammo--;
-                
-                // Create bullet
-                const bulletSpeed = 0.5;
-                const bulletDirection = this.camera.direction;
-                const bulletVelocity = bulletDirection.scale(bulletSpeed);
-                const bulletPosition = this.camera.position.add(bulletDirection);
-                
-                return new Bullet(bulletPosition, bulletVelocity, this.team);
-            }
-            
-            reload() {
-                if (this.isReloading || this.ammo === 30) return;
-                
-                this.isReloading = true;
-                setTimeout(() => {
-                    this.ammo = 30;
-                    this.isReloading = false;
-                }, 2000);
-            }
-            
-            jump(world) {
-                if (this.onGround) {
-                    this.velocity.y = world.config.jumpForce;
-                    this.onGround = false;
-                }
-            }
+            return;
         }
         
-        // Implements enemy AI (Interface Segregation)
-        class AI {
-            constructor(actor, difficulty = 'normal') {
-                this.actor = actor;
-                this.difficulty = difficulty;
-                this.state = 'patrol';
-                this.patrolPoints = [];
-                this.currentPatrolIndex = 0;
-                this.targetActor = null;
-                this.lastShotTime = 0;
-                this.path = [];
-                
-                // Set patrol points based on spawn location
-                const radius = 10 + Math.random() * 10;
-                for (let i = 0; i < 4; i++) {
-                    const angle = (i / 4) * Math.PI * 2;
-                    this.patrolPoints.push(new Vector(
-                        this.actor.position.x + Math.cos(angle) * radius,
-                        this.actor.position.y,
-                        this.actor.position.z + Math.sin(angle) * radius
-                    ));
-                }
+        if (this.currentAmmo <= 0) {
+            // Out of ammo
+            this.playSound('empty');
+            this.reload();
+            if (this.automatic) {
+                requestAnimationFrame(this.tryToFire.bind(this));
             }
-            
-            update(deltaTime, world) {
-                // AI behavior state machine
-                switch (this.state) {
-                    case 'patrol':
-                        this.patrol(deltaTime);
-                        
-                        // Check if player is visible
-                        if (this.canSeeActor(world.player, world)) {
-                            this.targetActor = world.player;
-                            this.state = 'chase';
-                        }
-                        break;
-                        
-                    case 'chase':
-                        this.chase(deltaTime, world);
-                        
-                        // If lost sight of player, return to patrol
-                        if (!this.canSeeActor(this.targetActor, world)) {
-                            this.state = 'patrol';
-                            this.targetActor = null;
-                        }
-                        break;
-                }
-            }
-            
-            patrol(deltaTime) {
-                const target = this.patrolPoints[this.currentPatrolIndex];
-                const direction = target.subtract(this.actor.position);
-                direction.y = 0;
-                
-                if (direction.length() < 1) {
-                    // Reached waypoint, move to next
-                    this.currentPatrolIndex = (this.currentPatrolIndex + 1) % this.patrolPoints.length;
-                } else {
-                    // Move towards waypoint
-                    const moveDir = direction.normalize().scale(0.05);
-                    this.actor.velocity.x = moveDir.x;
-                    this.actor.velocity.z = moveDir.z;
-                    
-                    // Rotate to face direction
-                    const angle = Math.atan2(direction.z, direction.x);
-                    this.actor.rotation = angle;
-                }
-            }
-            
-            chase(deltaTime, world) {
-                const direction = this.targetActor.position.subtract(this.actor.position);
-                direction.y = 0;
-                
-                // Move towards player
-                const moveDir = direction.normalize().scale(0.07);
-                this.actor.velocity.x = moveDir.x;
-                this.actor.velocity.z = moveDir.z;
-                
-                // Rotate to face player
-                const angle = Math.atan2(direction.z, direction.x);
-                this.actor.rotation = angle;
-                
-                // Try to shoot if close enough and timer allows
-                const now = Date.now();
-                if (direction.length() < 15 && now - this.lastShotTime > 1000) {
-                    this.lastShotTime = now;
-                    
-                    // Create bullet
-                    const bulletSpeed = 0.3;
-                    const bulletDirection = direction.normalize();
-                    const bulletVelocity = bulletDirection.scale(bulletSpeed);
-                    const bulletPosition = this.actor.position.add(new Vector(0, 1, 0)).add(bulletDirection);
-                    
-                    // Add some inaccuracy based on difficulty
-                    let accuracy = 0;
-                    if (this.difficulty === 'easy') accuracy = 0.2;
-                    else if (this.difficulty === 'normal') accuracy = 0.1;
-                    else accuracy = 0.05;
-                    
-                    bulletVelocity.x += (Math.random() - 0.5) * accuracy;
-                    bulletVelocity.z += (Math.random() - 0.5) * accuracy;
-                    
-                    world.bullets.push(new Bullet(bulletPosition, bulletVelocity, this.actor.team));
-                }
-            }
-            
-            canSeeActor(actor, world) {
-                if (!actor) return false;
-                
-                const direction = actor.position.add(new Vector(0, 1, 0)).subtract(
-                    this.actor.position.add(new Vector(0, 1, 0))
-                );
-                const distance = direction.length();
-                
-                // Check distance
-                if (distance > 20) return false;
-                
-                // Check if line of sight is blocked
-                for (const obstacle of world.obstacles) {
-                    // Simple ray-box intersection check
-                    const ray = direction.normalize();
-                    const rayStart = this.actor.position.add(new Vector(0, 1, 0));
-                    
-                    // Check for intersection with obstacle
-                    // This is a simplified version - not accurate for all cases
-                    const t = (obstacle.position.subtract(rayStart)).dot(ray);
-                    if (t > 0 && t < distance) {
-                        const point = rayStart.add(ray.scale(t));
-                        const dx = Math.abs(point.x - obstacle.position.x);
-                        const dy = Math.abs(point.y - obstacle.position.y);
-                        const dz = Math.abs(point.z - obstacle.position.z);
-                        
-                        if (dx < obstacle.size.x/2 && dy < obstacle.size.y/2 && dz < obstacle.size.z/2) {
-                            return false;
-                        }
-                    }
-                }
-                
-                return true;
-            }
+            return;
         }
         
-        // Enemy class - computer-controlled opponents (Inheritance)
-        class Enemy extends Actor {
-            constructor(position, team) {
-                super(position, new Vector(0.8, 1.8, 0.8), 'enemy', 100);
-                this.team = team || 'red';
-                this.rotation = 0;
-                this.ai = new AI(this, 'normal');
-            }
-            
-            update(deltaTime, world) {
-                super.update(deltaTime, world);
-                
-                // Update AI
-                this.ai.update(deltaTime, world);
-            }
-        }
+        // Fire the weapon
+        this.fire();
+        this.lastFired = now;
         
-        // Friendly class - team members (Inheritance & Liskov Substitution)
-        class Friendly extends Actor {
-            constructor(position) {
-                super(position, new Vector(0.8, 1.8, 0.8), 'friendly', 100);
-                this.team = 'blue';
-                this.rotation = 0;
-                this.ai = new AI(this, 'normal');
-                this.role = Math.random() < 0.5 ? 'support' : 'assault';
-            }
-            
-            update(deltaTime, world) {
-                super.update(deltaTime, world);
-                
-                // Update AI
-                this.ai.update(deltaTime, world);
-                
-                // Team-specific behavior
-                if (this.role === 'support' && Math.random() < 0.001) {
-                    // Occasionally heal nearby teammates
-                    for (const actor of world.actors) {
-                        if (actor.team === this.team && actor !== this) {
-                            const distance = actor.position.subtract(this.position).length();
-                            if (distance < 5 && actor.health < 100) {
-                                actor.health = Math.min(100, actor.health + 10);
-                            }
-                        }
-                    }
-                }
-            }
+        // If automatic, queue up next shot
+        if (this.automatic) {
+            requestAnimationFrame(this.tryToFire.bind(this));
         }
+    }
+    
+    fire() {
+        // Decrease ammo
+        this.currentAmmo--;
         
-        // Bullet class - projectiles fired by actors
-        class Bullet extends Entity {
-            constructor(position, velocity, team) {
-                super(position, new Vector(0.1, 0.1, 0.1), 'bullet');
-                this.velocity = velocity;
-                this.team = team;
-                this.damage = 25;
-                this.lifetime = 100;
-            }
+        // Play sound
+        this.playSound('fire');
+        
+        // Apply recoil
+        this.applyRecoil();
+        
+        // Create bullet(s)
+        this.createBullets();
+        
+        // Update UI
+        this.updateAmmoUI();
+    }
+    
+    createBullets() {
+        // Default implementation creates a single bullet
+        this.createBullet();
+    }
+    
+    createBullet() {
+        // Get direction from camera with spread
+        const spreadX = (Math.random() - 0.5) * this.spread;
+        const spreadY = (Math.random() - 0.5) * this.spread;
+        
+        // Create direction vector from camera
+        const direction = new THREE.Vector3();
+        this.camera.getWorldDirection(direction);
+        
+        // Apply spread
+        direction.x += spreadX;
+        direction.y += spreadY;
+        direction.normalize();
+        
+        // Create bullet
+        const bullet = {
+            position: new THREE.Vector3().copy(this.camera.position),
+            direction: direction,
+            speed: this.bulletSpeed,
+            damage: this.damage,
+            lifetime: this.bulletLifetime,
+            timeCreated: performance.now(),
+            mesh: this.createBulletMesh()
+        };
+        
+        // Add to scene
+        this.scene.add(bullet.mesh);
+        
+        // Add to bullets array
+        this.bullets.push(bullet);
+    }
+    
+    createBulletMesh() {
+        // Simple bullet representation
+        const geometry = new THREE.SphereGeometry(0.05);
+        const material = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.copy(this.camera.position);
+        return mesh;
+    }
+    
+    applyRecoil() {
+        // Apply camera recoil
+        this.camera.rotation.x -= this.recoil * Math.random();
+        this.camera.rotation.y += (Math.random() - 0.5) * this.recoil * 0.5;
+    }
+    
+    reload() {
+        if (this.isReloading || this.currentAmmo === this.ammoPerClip || this.reserveAmmo <= 0) return;
+        
+        this.isReloading = true;
+        this.playSound('reload');
+        
+        // Start reload animation
+        this.model.rotation.x = -Math.PI / 6;
+        
+        setTimeout(() => {
+            // Calculate ammo to reload
+            const ammoNeeded = this.ammoPerClip - this.currentAmmo;
+            const ammoToReload = Math.min(ammoNeeded, this.reserveAmmo);
             
-            update(deltaTime, world) {
-                this.position = this.position.add(this.velocity);
-                this.lifetime--;
-                
-                // Check collisions with world
-                for (const obstacle of world.obstacles) {
-                    if (this.collidesWith(obstacle)) {
-                        this.lifetime = 0;
-                        return;
-                    }
-                }
-                
-                // Check collisions with actors
-                for (const actor of world.actors) {
-                    if (actor.team !== this.team && this.collidesWith(actor)) {
-                        const isDead = actor.takeDamage(this.damage);
-                        
-                        // Award points if player hit an enemy
-                        if (this.team === 'blue' && actor.type === 'enemy' && isDead) {
-                            world.player.score += 100;
-                        }
-                        
-                        // Damage player if hit by enemy
-                        if (actor.type === 'player') {
-                            document.getElementById('health').textContent = actor.health;
-                        }
-                        
-                        this.lifetime = 0;
-                        return;
-                    }
-                }
-            }
+            this.currentAmmo += ammoToReload;
+            this.reserveAmmo -= ammoToReload;
+            
+            this.isReloading = false;
+            
+            // Reset weapon position
+            this.model.rotation.x = 0;
+            
+            // Update UI
+            this.updateAmmoUI();
+        }, this.reloadTime * 1000);
+    }
+    
+    addAmmo(amount) {
+        this.reserveAmmo = Math.min(this.reserveAmmo + amount, this.maxAmmo);
+        this.updateAmmoUI();
+    }
+    
+    updateAmmoUI() {
+        document.getElementById('ammo-counter').textContent = `${this.currentAmmo} / ${this.reserveAmmo}`;
+        document.getElementById('weapon-name').textContent = this.name;
+    }
+    
+    playSound(type) {
+        // In a full implementation, this would play actual sounds
+        console.log(`Playing ${this.name} ${type} sound: ${this.soundConfig[type]}`);
+    }
+    
+    update(deltaTime) {
+        // Update bullets
+        this.updateBullets(deltaTime);
+        
+        // Check for manual reload
+        if (this.player.input.isReloading() && !this.isReloading && this.currentAmmo < this.ammoPerClip && this.reserveAmmo > 0) {
+            this.reload();
         }
+    }
+    
+    updateBullets(deltaTime) {
+        const now = performance.now();
         
-        // Objective class - objects to collect for mission completion
-        class Objective extends Entity {
-            constructor(position) {
-                super(position, new Vector(0.5, 0.5, 0.5), 'objective');
-                this.collected = false;
-                this.pulseTime = 0;
-            }
+        // Update bullet positions and check for collisions
+        for (let i = this.bullets.length - 1; i >= 0; i--) {
+            const bullet = this.bullets[i];
             
-            update(deltaTime, world) {
-                if (this.collected) return;
-                
-                this.pulseTime += deltaTime;
-                
-                // Check if player is close enough to collect
-                const distance = world.player.position.subtract(this.position).length();
-                if (distance < 1.5) {
-                    this.collected = true;
-                    world.player.objectives++;
-                    world.player.score += 250;
-                    document.getElementById('objectives').textContent = 
-                        `${world.player.objectives}/${world.levelObjectives}`;
-                    
-                    // Check if all objectives are collected
-                    if (world.player.objectives >= world.levelObjectives) {
-                        world.levelComplete();
-                    }
-                }
-            }
-        }
-        
-        // Obstacle class - level geometry
-        class Obstacle extends Entity {
-            constructor(position, size, color) {
-                super(position, size, 'obstacle');
-                this.color = color || '#555';
-            }
-        }
-        
-        // WorldRenderer - handles 3D rendering (Dependency Inversion)
-        class WorldRenderer {
-            constructor(canvas) {
-                this.canvas = canvas;
-                this.context = canvas.getContext('2d');
-                this.width = canvas.width;
-                this.height = canvas.height;
-                
-                // Depth buffer - used for correct rendering order
-                this.depthBuffer = [];
-                
-                // Colors
-                this.colors = {
-                    ground: '#8B8B83',
-                    sky: '#87CEEB',
-                    enemy: '#FF4444',
-                    friendly: '#4444FF',
-                    bullet: '#FFFF00',
-                    objective: '#44FF44',
-                    player: '#4444FF'
-                };
-            }
-            
-            clear() {
-                this.context.clearRect(0, 0, this.width, this.height);
-                this.depthBuffer = [];
-            }
-            
-            renderWorld(world) {
-                this.clear();
-                
-                const camera = world.player.camera;
-                
-                // Draw sky and ground
-                this.context.fillStyle = this.colors.sky;
-                this.context.fillRect(0, 0, this.width, this.height / 2);
-                this.context.fillStyle = this.colors.ground;
-                this.context.fillRect(0, this.height / 2, this.width, this.height / 2);
-                
-                // Draw entities
-                for (const obstacle of world.obstacles) {
-                    this.renderCube(camera, obstacle.position, obstacle.size, obstacle.color);
-                }
-                
-                // Draw actors
-                for (const actor of world.actors) {
-                    if (actor === world.player) continue; // Skip player
-                    
-                    const color = actor.team === 'blue' ? this.colors.friendly : this.colors.enemy;
-                    this.renderCube(camera, actor.position, actor.size, color);
-                }
-                
-                // Draw objectives
-                for (const objective of world.objectives) {
-                    if (!objective.collected) {
-                        // Pulsing effect
-                        const pulseScale = 1 + Math.sin(objective.pulseTime * 0.1) * 0.1;
-                        const adjustedSize = objective.size.scale(pulseScale);
-                        this.renderCube(camera, objective.position, adjustedSize, this.colors.objective);
-                    }
-                }
-                
-                // Draw bullets
-                for (const bullet of world.bullets) {
-                    this.renderCube(camera, bullet.position, bullet.size, this.colors.bullet);
-                }
-                
-                // Sort depth buffer and render from back to front
-                this.depthBuffer.sort((a, b) => b.depth - a.depth);
-                
-                for (const item of this.depthBuffer) {
-                    this.context.fillStyle = item.color;
-                    this.context.fillRect(item.x, item.y, item.width, item.height);
-                }
-            }
-            
-            // Cube rendering function
-            renderCube(camera, position, size, color) {
-                // Calculate direction to entity
-                const direction = position.subtract(camera.position);
-                
-                // Calculate distance
-                const distance = direction.length();
-                
-                // Don't render if too far
-                if (distance > 50) return;
-                
-                // Calculate dot product with camera direction for view frustum culling
-                const dot = direction.normalize().dot(camera.direction);
-                
-                // Only render if in front of camera
-                if (dot > 0.1) {
-                    // Project 3D position to 2D screen coordinates
-                    const fov = 70 * Math.PI / 180;
-                    const aspectRatio = this.width / this.height;
-                    
-                    // Calculate angle between camera direction and direction to entity
-                    const rightVec = new Vector(
-                        Math.cos(camera.yaw + Math.PI / 2),
-                        0,
-                        Math.sin(camera.yaw + Math.PI / 2)
-                    );
-                    
-                    const upVec = new Vector(0, 1, 0);
-                    
-                    // Calculate screen position
-                    const screenX = this.width / 2 * (1 + direction.dot(rightVec) / (distance * Math.tan(fov / 2) * aspectRatio));
-                    const screenY = this.height / 2 * (1 - direction.dot(upVec) / (distance * Math.tan(fov / 2)));
-                    
-                    // Calculate screen size based on distance
-                    const scale = 500 / distance;
-                    const screenWidth = size.x * scale;
-                    const screenHeight = size.y * scale;
-                    
-                    // Add to depth buffer for correct rendering order
-                    this.depthBuffer.push({
-                        x: screenX - screenWidth / 2,
-                        y: screenY - screenHeight / 2,
-                        width: screenWidth,
-                        height: screenHeight,
-                        color: color,
-                        depth: distance
-                    });
-                }
-            }
-        }
-        
-        // LevelGenerator - creates game levels (Dependency Inversion)
-        class LevelGenerator {
-            constructor() {
-                this.difficulty = 1;
-            }
-            
-            generateLevel(level) {
-                const world = {
-                    obstacles: [],
-                    objectives: [],
-                    actors: [],
-                    levelObjectives: 5
-                };
-                
-                // Adjust difficulty
-                const enemyCount = 3 + level * 2;
-                const friendlyCount = 2 + Math.floor(level / 2);
-                
-                // Generate level layout based on level number
-                switch (level) {
-                    case 1:
-                        // Tutorial level - simple open field with few obstacles
-                        this.generateWarehouse(world);
-                        break;
-                    case 2:
-                        // Urban level - city blocks
-                        this.generateUrban(world);
-                        break;
-                    case 3:
-                        // Forest level - trees and hills
-                        this.generateForest(world);
-                        break;
-                    default:
-                        // Procedural level for higher levels
-                        this.generateProcedural(world, level);
-                        break;
-                }
-                
-                // Add enemies
-                for (let i = 0; i < enemyCount; i++) {
-                    const pos = this.findSpawnPosition(world, 20, 40);
-                    world.actors.push(new Enemy(pos, 'red'));
-                }
-                
-                // Add friendlies
-                for (let i = 0; i < friendlyCount; i++) {
-                    const pos = this.findSpawnPosition(world, 5, 15);
-                    world.actors.push(new Friendly(pos));
-                }
-                
-                // Add objectives
-                for (let i = 0; i < world.levelObjectives; i++) {
-                    const pos = this.findSpawnPosition(world, 10, 40);
-                    world.objectives.push(new Objective(pos));
-                }
-                
-                return world;
-            }
-            
-            // Level generation methods
-            generateWarehouse(world) {
-                // Outer walls
-                const size = 40;
-                
-                // Floor
-                world.obstacles.push(new Obstacle(new Vector(0, -0.5, 0), new Vector(size*2, 1, size*2), '#555'));
-                
-                // Walls
-                world.obstacles.push(new Obstacle(new Vector(-size, 5, 0), new Vector(1, 10, size*2), '#777'));
-                world.obstacles.push(new Obstacle(new Vector(size, 5, 0), new Vector(1, 10, size*2), '#777'));
-                world.obstacles.push(new
+            // Move bullet
+            const moveAmount = bullet.speed * deltaTime;
+            bullet.position.add(bullet.direction.clone().multiplyScalar(moveAmount));
+            bullet.mesh.position
