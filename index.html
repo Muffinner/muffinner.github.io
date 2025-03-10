@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Black Background with Blue Dot</title>
+    <title>Fluid Dot with Border</title>
     <style>
         /* style.css content */
         body {
@@ -15,16 +15,32 @@
             align-items: center;
         }
 
+        #dot-container { /* New container div */
+            width: 20vw; /* Relative to viewport width */
+            height: 20vw; /*  Make it a square */
+            max-width: 20vh; /* Limit based on viewport height */
+            max-height: 20vh;
+            border: 2px solid red; /* Add the red border */
+            border-radius: 50%;
+            display: flex; /*center the dot inside*/
+            justify-content: center;
+            align-items: center;
+
+
+        }
+
         #blue-dot {
-            width: 20px;
-            height: 20px;
+            width: 80%;  /* 80% of the container's width */
+            height: 80%; /* 80% of the container's height */
             background-color: blue;
             border-radius: 50%;
         }
     </style>
 </head>
 <body>
-    <div id="blue-dot"></div>
+    <div id="dot-container">
+        <div id="blue-dot"></div>
+    </div>
     <script>
         // script.js content
         //empty for now
