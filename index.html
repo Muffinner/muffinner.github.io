@@ -23,6 +23,7 @@
             width: 100%;
             height: 100%;
             perspective: 1000px;
+            cursor: crosshair;
         }
         
         .enemy {
@@ -55,6 +56,16 @@
             box-shadow: 0 0 10px 5px #0ff;
         }
         
+        .enemy-shot {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background-color: #f55;
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            box-shadow: 0 0 10px 5px #f55;
+        }
+        
         .explosion {
             position: absolute;
             width: 100px;
@@ -75,6 +86,7 @@
             border-radius: 50%;
             transform: translate(-50%, -50%);
             pointer-events: none;
+            z-index: 100;
         }
         
         #reticle::before, #reticle::after {
@@ -244,6 +256,7 @@
             width: 200px;
             display: flex;
             justify-content: space-around;
+            z-index: 10;
         }
         
         .weapon {
@@ -271,6 +284,7 @@
             opacity: 0;
             transition: opacity 0.5s;
             text-shadow: 0 0 5px #0f0;
+            z-index: 10;
         }
     </style>
 </head>
@@ -353,6 +367,8 @@
                 this.game = game;
                 this.keys = {};
                 this.mousePosition = { x: 0, y: 0 };
+                this.mouseDeltaX = 0;
+                this.mouseDeltaY = 0;
                 this.isFiring = false;
                 
                 document.addEventListener('keydown', this.handleKeyDown.bind(this));
@@ -754,6 +770,83 @@
             }
         }
 
+        // Enemy Projectile class
+        class EnemyProjectile extends Entity {
+            constructor(id, position, direction, speed, damage, game) {
+                super(id, 'enemy-shot', position);
+                this.direction = direction;
+                this.speed = speed;
+                this.damage = damage;
+                this.game = game;
+                this.lifeTime = 5000; // ms before auto-destroy
+                this.creationTime = Date.now();
+                
+                // Create DOM element
+                this.element = document.createElement('div');
+                this.element.className = 'enemy-shot';
+                document.getElementById('gameWorld').appendChild(this.element);
+            }
+            
+            update() {
+                // Move the projectile
+                this.position.x += this.direction.x * this.speed;
+                this.position.y += this.direction.y * this.speed;
+                this.position.z += this.direction.z * this.speed;
+                
+                // Check for collisions with player
+                this.checkPlayerCollision();
+                
+                // Auto-destroy after lifetime
+                if (Date.now() - this.creationTime > this.lifeTime) {
+                    this.destroy();
+                }
+            }
+            
+            render() {
+                if (this.element) {
+                    // Convert 3D position to screen position
+                    const screenPos = this.game.worldToScreen(this.position);
+                    
+                    if (screenPos.visible) {
+                        this.element.style.display = 'block';
+                        this.element.style.left = `${screenPos.x}px`;
+                        this.element.style.top = `${screenPos.y}px`;
+                        
+                        // Scale based on distance for 3D effect
+                        const scale = Math.max(0.1, 1 / Math.max(1, -this.position.z / 500));
+                        this.element.style.transform = `scale(${scale})`;
+                    } else {
+                        this.element.style.display = 'none';
+                    }
+                }
+            }
+            
+            checkPlayerCollision() {
+                // Simple distance-based collision with player (origin)
+                const distance = Math.sqrt(
+                    this.position.x * this.position.x + 
+                    this.position.y * this.position.y + 
+                    this.position.z * this.position.z
+                );
+                
+                if (distance < 15) { // Player hit radius
+                    this.game.player.takeDamage(this.damage);
+                    this.game.player.showMessage("HIT! -" + this.damage);
+                    this.createExplosion();
+                    this.destroy();
+                }
+            }
+            
+            createExplosion() {
+                const explosion = new Explosion(
+                    'exp' + Date.now(),
+                    { ...this.position },
+                    this.game
+                );
+                this.game.addEntity(explosion);
+            }
+        }
+
         // Enemy class
         class Enemy extends Entity {
             constructor(id, position, game) {
@@ -799,99 +892,4 @@
                 if (length < 20) {
                     // Damage player
                     this.game.player.takeDamage(this.damage * 2);
-                    this.createExplosion();
-                    this.destroy();
-                }
-            }
-            
-            render() {
-                if (this.element) {
-                    // Convert 3D position to screen position
-                    const screenPos = this.game.worldToScreen(this.position);
-                    
-                    if (screenPos.visible) {
-                        this.element.style.display = 'block';
-                        this.element.style.left = `${screenPos.x}px`;
-                        this.element.style.top = `${screenPos.y}px`;
-                        
-                        // Scale based on distance for 3D effect
-                        const scale = Math.max(0.1, 1 / Math.max(1, -this.position.z / 1000));
-                        this.element.style.transform = `scale(${scale})`;
-                    } else {
-                        this.element.style.display = 'none';
-                    }
-                }
-            }
-            
-            takeDamage(amount) {
-                this.health -= amount;
-                if (this.health <= 0) {
-                    this.game.gameState.addScore(50);
-                    this.createExplosion();
-                    this.destroy();
-                }
-            }
-            
-            shootAtPlayer() {
-                // Calculate direction to player
-                const dir = {
-                    x: -this.position.x,
-                    y: -this.position.y,
-                    z: -this.position.z
-                };
-                
-                // Normalize
-                const length = Math.sqrt(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
-                dir.x /= length;
-                dir.y /= length;
-                dir.z /= length;
-                
-                // Add some randomness
-                dir.x += (Math.random() - 0.5) * 0.2;
-                dir.y += (Math.random() - 0.5) * 0.2;
-                dir.z += (Math.random() - 0.5) * 0.2;
-                
-                // Create enemy projectile
-                const projectile = new EnemyProjectile(
-                    'ep' + Date.now(),
-                    this.position,
-                    dir,
-                    10,
-                    this.damage,
-                    this.game
-                );
-                
-                this.game.addEntity(projectile);
-            }
-            
-            createExplosion() {
-                const explosion = new Explosion(
-                    'exp' + Date.now(),
-                    { ...this.position },
-                    this.game
-                );
-                this.game.addEntity(explosion);
-            }
-        }
-
-        // Asteroid class
-        class Asteroid extends Entity {
-            constructor(id, position, game) {
-                super(id, 'asteroid', position);
-                this.game = game;
-                this.health = 100;
-                this.speed = 1 + Math.random() * 2;
-                this.rotationSpeed = {
-                    x: (Math.random() - 0.5) * 0.05,
-                    y: (Math.random() - 0.5) * 0.05,
-                    z: (Math.random() - 0.5) * 0.05
-                };
-                this.damage = 20;
-                
-                // Create DOM element
-                this.element = document.createElement('div');
-                this.element.className = 'asteroid';
-                document.getElementById('gameWorld').appendChild(this.element);
-            }
-            
-            update() {
+                    this.createExplos
