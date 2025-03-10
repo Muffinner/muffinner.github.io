@@ -18,12 +18,7 @@
             height: 100vh; /* Center vertically */
         }
 
-        @font-face { /* Example for 'Press Start 2P' - you might need to adjust path */
-            font-family: 'Press Start 2P';
-            src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-            font-weight: normal;
-            font-style: normal;
-        }
+        /* REMOVED @font-face BLOCK - Using <link> method now */
 
         #game-container {
             position: relative; /* For positioning UI elements */
@@ -100,6 +95,9 @@
             display: none !important; /* Important to override other styles */
         }
     </style>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="game-container">
