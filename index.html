@@ -1,279 +1,149 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Catch the Dot!</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Networked Circle Game</title>
     <style>
         body {
-            font-family: sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+            overflow: hidden; /* Prevent scrollbars */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #222;
         }
-
-        #game-container {
-            position: relative;
-            width: 400px;
-            height: 300px;
-            border: 2px solid black;
-            background-color: white;
+        #gameCanvas {
+            background-color: #333;
+            border: 1px solid #555;
         }
-
-        .player {
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            background-color: blue; /* Default color */
-            border-radius: 50%; /* Make it a circle */
-        }
-        #player1{
-          background-color: blue;
-        }
-
-        #player2{
-            background-color: red;
-        }
-
-        #dot {
-            position: absolute;
-            width: 10px;
-            height: 10px;
-            background-color: green;
-            border-radius: 50%;
-        }
-
-        #score {
-            margin-top: 20px;
-            font-size: 18px;
-        }
-
-        #message{
-            color:red;
+        #message {
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          color: white;
+          font-family: sans-serif;
         }
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <div id="player1" class="player"></div>
-        <div id="player2" class="player"></div>
-        <div id="dot"></div>
-    </div>
-    <div id="score">
-        Player 1: <span id="score1">0</span> | Player 2: <span id="score2">0</span>
-    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
     <div id="message"></div>
 
-    <!-- Firebase App (the core Firebase SDK) -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <!-- Firebase Realtime Database -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-
     <script>
-        // --- Firebase Configuration ---
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY", // REPLACE WITH YOUR KEYS
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // REPLACE
-            projectId: "YOUR_PROJECT_ID", // REPLACE
-            storageBucket: "YOUR_PROJECT_ID.appspot.com", // REPLACE
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // REPLACE
-            appId: "YOUR_APP_ID", // REPLACE
-            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com" // REPLACE
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const messageDiv = document.getElementById('message');
+
+        const playerRadius = 20;
+        let playerId = null;
+        const players = {};  // Store player data { id: { x, y, color } }
+
+
+        // --- WebSocket Connection ---
+        const ws = new WebSocket('ws://localhost:8765');  //  REPLACE THIS with server address if not local!
+
+        ws.onopen = () => {
+            console.log('WebSocket connected');
+            messageDiv.textContent = 'Connected to server.';
         };
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
 
-        // --- Game Variables ---
-        const gameContainer = document.getElementById('game-container');
-        const player1 = document.getElementById('player1');
-        const player2 = document.getElementById('player2');
-        const dot = document.getElementById('dot');
-        const score1Display = document.getElementById('score1');
-        const score2Display = document.getElementById('score2');
-        const messageDisplay = document.getElementById('message');
-
-        let player1Pos = { x: 50, y: 50 };
-        let player2Pos = { x: 350, y: 250 };
-        let dotPos = { x: 200, y: 150 };
-        let score1 = 0;
-        let score2 = 0;
-        let myPlayerId = null; // 'player1' or 'player2'
-
-        // --- Firebase References ---
-        const gameRef = database.ref('game');
-        const player1Ref = gameRef.child('player1');
-        const player2Ref = gameRef.child('player2');
-        const dotRef = gameRef.child('dot');
-        const scoreRef = gameRef.child('score');
-
-
-        // --- Player Assignment ---
-        gameRef.child('players').transaction(players => {
-            if (!players) {
-                players = { player1: true, player2: false }; // player1 joins first
-                myPlayerId = 'player1';
-            } else if (!players.player1) {
-                players.player1 = true;
-                myPlayerId = 'player1';
-            } else if (!players.player2) {
-                players.player2 = true;
-                myPlayerId = 'player2';
-            } else {
-                // Game is full
-                messageDisplay.textContent = 'Game is full!';
-                return; // Don't update the transaction
-            }
-            return players;
-        }, (error, committed) => {
-            if (error) {
-                console.error("Player assignment failed:", error);
-            } else if (committed) {
-                console.log("I am:", myPlayerId);
-                setupGame(); // Start game setup after player assignment
-            }
-        });
-
-        function setupGame() {
-            // --- Initial Setup and Event Listeners ---
-
-            // Update initial positions in Firebase (only if you're player 1)
-            if (myPlayerId === 'player1') {
-                player1Ref.set(player1Pos);
-                player2Ref.set(player2Pos);
-                dotRef.set(dotPos);
-                scoreRef.set({ player1: 0, player2: 0 });
-            }
-
-            // Listen for changes from other players
-            player1Ref.on('value', snapshot => {
-                if (myPlayerId !== 'player1') { // Only update if it's the *other* player
-                    player1Pos = snapshot.val();
-                    updatePlayerPosition(player1, player1Pos);
+            if (data.type === 'welcome') {
+                playerId = data.id;
+                console.log("My player ID:", playerId);
+                messageDiv.textContent = `Connected. Your ID: ${playerId}`;
+            } else if (data.type === 'state') {
+                // Update all player positions
+                for (const id in data.players) {
+                    players[id] = data.players[id];
                 }
-            });
-            player2Ref.on('value', snapshot => {
-                if (myPlayerId !== 'player2') {
-                    player2Pos = snapshot.val();
-                    updatePlayerPosition(player2, player2Pos);
+            } else if (data.type === 'player_joined') {
+                players[data.id] = { x: data.x, y: data.y, color: data.color };
+            } else if (data.type === 'player_left') {
+                delete players[data.id];
+            } else if (data.type === 'player_moved') {
+                if (players[data.id]) { // Check if player still exists (important!)
+                   players[data.id].x = data.x;
+                   players[data.id].y = data.y;
                 }
-            });
+            }
+        };
 
-            dotRef.on('value', snapshot => {
-                dotPos = snapshot.val();
-                updateDotPosition();
-            });
+        ws.onclose = () => {
+            console.log('WebSocket disconnected');
+            messageDiv.textContent = 'Disconnected from server.';
+            //  Optional:  Attempt to reconnect (with backoff).
+        };
 
-            scoreRef.on('value', snapshot => {
-                const scores = snapshot.val();
-                score1 = scores.player1;
-                score2 = scores.player2;
-                updateScoreDisplay();
-            });
-
-            // --- Player Movement (Client-Side) ---
-            document.addEventListener('keydown', (event) => {
-                let myPos, myRef;
-                if (myPlayerId === 'player1') {
-                    myPos = player1Pos;
-                    myRef = player1Ref;
-                } else if (myPlayerId === 'player2') {
-                    myPos = player2Pos;
-                    myRef = player2Ref;
-                } else {
-                    return; // Not a valid player
-                }
-
-                const speed = 5;
-                switch (event.key) {
-                    case 'ArrowUp':    myPos.y -= speed; break;
-                    case 'ArrowDown':  myPos.y += speed; break;
-                    case 'ArrowLeft':  myPos.x -= speed; break;
-                    case 'ArrowRight': myPos.x += speed; break;
-                    default: return; // Ignore other keys
-                }
-
-                // Keep player within bounds
-                myPos.x = Math.max(0, Math.min(myPos.x, gameContainer.offsetWidth - player1.offsetWidth));
-                myPos.y = Math.max(0, Math.min(myPos.y, gameContainer.offsetHeight - player1.offsetHeight));
-
-                // Update local position and Firebase
-                updatePlayerPosition(myPlayerId === 'player1' ? player1 : player2, myPos);
-                myRef.set(myPos);
-
-                // Check for collision (after moving)
-                checkCollision();
-            });
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+            messageDiv.textContent = 'WebSocket Error.  Check console.';
+        };
 
 
-            // --- Helper Functions ---
-            function updatePlayerPosition(player, pos) {
-                player.style.left = pos.x + 'px';
-                player.style.top = pos.y + 'px';
+        // --- Game Logic ---
+
+        function drawPlayer(player) {
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, playerRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = player.color;
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (const id in players) {
+                drawPlayer(players[id]);
             }
 
-            function updateDotPosition() {
-                dot.style.left = dotPos.x + 'px';
-                dot.style.top = dotPos.y + 'px';
-            }
-
-            function updateScoreDisplay() {
-                score1Display.textContent = score1;
-                score2Display.textContent = score2;
-            }
-
-            function checkCollision() {
-              const playerRect = (myPlayerId === 'player1' ? player1 : player2).getBoundingClientRect();
-              const dotRect = dot.getBoundingClientRect();
-
-              if (
-                  playerRect.left < dotRect.right &&
-                  playerRect.right > dotRect.left &&
-                  playerRect.top < dotRect.bottom &&
-                  playerRect.bottom > dotRect.top
-              ) {
-                  // Collision!
-                  if (myPlayerId === 'player1') {
-                      score1++;
-                  } else {
-                      score2++;
-                  }
-                  scoreRef.set({ player1: score1, player2: score2 }); // Update Firebase
-                  moveDot(); // Move the dot (only one player does this)
-              }
-            }
-
-            function moveDot() {
-              if (myPlayerId === 'player1'){ // Only player 1 moves the dot
-                dotPos.x = Math.floor(Math.random() * (gameContainer.offsetWidth - dot.offsetWidth));
-                dotPos.y = Math.floor(Math.random() * (gameContainer.offsetHeight - dot.offsetHeight));
-                dotRef.set(dotPos);  // Update Firebase
-              }
-            }
-
-            // Initial position updates
-            updatePlayerPosition(player1, player1Pos);
-            updatePlayerPosition(player2, player2Pos);
-            updateDotPosition();
-            updateScoreDisplay();
+            requestAnimationFrame(draw);
         }
 
 
-        // --- Cleanup (Important for disconnecting) ---
 
-        window.addEventListener('beforeunload', () => {
-            if (myPlayerId) {
-                gameRef.child('players').child(myPlayerId).set(false); // Mark player as disconnected
-                // Turn off listeners
-                player1Ref.off();
-                player2Ref.off();
-                dotRef.off();
-                scoreRef.off();
-            }
+        // --- Input Handling ---
+        const keys = {};
+
+        window.addEventListener('keydown', (event) => {
+            keys[event.key] = true;
+          
+            sendMovement();
         });
+
+        window.addEventListener('keyup', (event) => {
+            keys[event.key] = false;
+        });
+
+
+        // --- Movement and Sending Updates ---
+        const moveSpeed = 3;
+
+        function sendMovement() {
+            if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) {
+              return;
+            }
+            let dx = 0;
+            let dy = 0;
+
+            if (keys['ArrowLeft'] || keys['a']) dx -= moveSpeed;
+            if (keys['ArrowRight'] || keys['d']) dx += moveSpeed;
+            if (keys['ArrowUp'] || keys['w']) dy -= moveSpeed;
+            if (keys['ArrowDown'] || keys['s']) dy += moveSpeed;
+
+             if (dx !== 0 || dy !== 0) {
+              ws.send(JSON.stringify({ type: 'move', dx: dx, dy: dy }));
+            }
+        }
+        
+        // Start the game loop
+        draw();
+
     </script>
 </body>
 </html>
