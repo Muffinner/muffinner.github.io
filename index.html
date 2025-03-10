@@ -3,147 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Networked Circle Game</title>
+    <title>Click the Square!</title>
     <style>
         body {
-            margin: 0;
-            overflow: hidden; /* Prevent scrollbars */
+            font-family: sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background-color: #222;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;  /* Remove default body margin */
         }
-        #gameCanvas {
-            background-color: #333;
-            border: 1px solid #555;
+
+        #game-container {
+            width: 600px;  /* Fixed container size */
+            height: 400px; /* Fixed container size */
+            background-color: #fff;
+            border: 2px solid #ccc;
+            position: relative; /* Needed for absolute positioning of the square */
+            overflow: hidden; /* Prevent the square from briefly appearing outside container */
         }
-        #message {
-          position: absolute;
-          top: 10px;
-          left: 10px;
-          color: white;
-          font-family: sans-serif;
+        
+        #target {
+            width: 50px;
+            height: 50px;
+            background-color: #4CAF50;
+            position: absolute;
+            cursor: pointer;  /* Make the cursor a pointer when hovering */
+        }
+
+        #score-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 20px;
+            color: #333;
+        }
+
+        #timer-display {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 20px;
+            color: #333;
+        }
+
+        #game-over {
+           position: absolute;
+           top: 0;
+           left: 0;
+           width: 100%;
+           height: 100%;
+           background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent black overlay */
+           color: white;
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           font-size: 30px;
+           z-index: 10; /* Ensures it appears above the game elements */
+           display: none; /* Hidden by default */
         }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-    <div id="message"></div>
+
+    <div id="game-container">
+        <div id="target"></div>
+        <div id="score-display">Score: 0</div>
+        <div id="timer-display">Time: 30</div>
+        <div id="game-over">Game Over!</div>
+    </div>
+    
+    
 
     <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const messageDiv = document.getElementById('message');
-
-        const playerRadius = 20;
-        let playerId = null;
-        const players = {};  // Store player data { id: { x, y, color } }
+        const target = document.getElementById('target');
+        const gameContainer = document.getElementById('game-container');
+        const scoreDisplay = document.getElementById('score-display');
+        const timerDisplay = document.getElementById('timer-display');
+        const gameOverScreen = document.getElementById('game-over');
 
 
-        // --- WebSocket Connection ---
-        const ws = new WebSocket('ws://localhost:8765');  //  REPLACE THIS with server address if not local!
+        let score = 0;
+        let timeLeft = 30;
+        let timerInterval;
+        let gameRunning = false;  // Flag to check if the game is running
 
-        ws.onopen = () => {
-            console.log('WebSocket connected');
-            messageDiv.textContent = 'Connected to server.';
-        };
+        function moveTarget() {
+            //Get the container's width/height without borders and padding:
+            const containerWidth = gameContainer.clientWidth;  //Use clientWidth/clientHeight
+            const containerHeight = gameContainer.clientHeight;
 
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-
-            if (data.type === 'welcome') {
-                playerId = data.id;
-                console.log("My player ID:", playerId);
-                messageDiv.textContent = `Connected. Your ID: ${playerId}`;
-            } else if (data.type === 'state') {
-                // Update all player positions
-                for (const id in data.players) {
-                    players[id] = data.players[id];
-                }
-            } else if (data.type === 'player_joined') {
-                players[data.id] = { x: data.x, y: data.y, color: data.color };
-            } else if (data.type === 'player_left') {
-                delete players[data.id];
-            } else if (data.type === 'player_moved') {
-                if (players[data.id]) { // Check if player still exists (important!)
-                   players[data.id].x = data.x;
-                   players[data.id].y = data.y;
-                }
-            }
-        };
-
-        ws.onclose = () => {
-            console.log('WebSocket disconnected');
-            messageDiv.textContent = 'Disconnected from server.';
-            //  Optional:  Attempt to reconnect (with backoff).
-        };
-
-        ws.onerror = (error) => {
-            console.error('WebSocket error:', error);
-            messageDiv.textContent = 'WebSocket Error.  Check console.';
-        };
+            //The target should be contained, so subtract target's w/h.
+            const maxX = containerWidth - target.offsetWidth;
+            const maxY = containerHeight - target.offsetHeight;
 
 
-        // --- Game Logic ---
+            const randomX = Math.floor(Math.random() * maxX);
+            const randomY = Math.floor(Math.random() * maxY);
 
-        function drawPlayer(player) {
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, playerRadius, 0, 2 * Math.PI);
-            ctx.fillStyle = player.color;
-            ctx.fill();
-            ctx.closePath();
-        }
-
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            for (const id in players) {
-                drawPlayer(players[id]);
-            }
-
-            requestAnimationFrame(draw);
+            target.style.left = randomX + 'px';
+            target.style.top = randomY + 'px';
         }
 
 
+        function updateScore() {
+            score++;
+            scoreDisplay.textContent = 'Score: ' + score;
+        }
+       function startGame() {
+           if (gameRunning) return; // Don't start multiple times
 
-        // --- Input Handling ---
-        const keys = {};
+            score = 0;
+            timeLeft = 30;
+            scoreDisplay.textContent = 'Score: 0';
+            timerDisplay.textContent = 'Time: 30';
+            gameOverScreen.style.display = 'none';  // Hide Game Over screen
+            gameRunning = true;
+            moveTarget();  // Initial position
 
-        window.addEventListener('keydown', (event) => {
-            keys[event.key] = true;
-          
-            sendMovement();
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                timerDisplay.textContent = 'Time: ' + timeLeft;
+
+                if (timeLeft <= 0) {
+                    endGame();
+                }
+            }, 1000);  //Update timer every 1000 ms (1 second)
+        }
+        function endGame() {
+           clearInterval(timerInterval);
+           gameOverScreen.textContent = "Game Over! Score: " + score;
+           gameOverScreen.style.display = 'flex'; // Show Game Over Screen. Use Flex for easy centering.
+           gameRunning = false;
+        }
+
+
+        target.addEventListener('click', () => {
+            if (!gameRunning) {
+                startGame();
+            } else {
+                updateScore();
+                moveTarget();
+             }
         });
 
-        window.addEventListener('keyup', (event) => {
-            keys[event.key] = false;
-        });
+         //Start Game on initial click (outside the target is acceptable).
+         gameContainer.addEventListener('click', (event) => {
+                if (!gameRunning  && event.target !== target)
+                {
+                    startGame();
+                }
+
+         })
 
 
-        // --- Movement and Sending Updates ---
-        const moveSpeed = 3;
-
-        function sendMovement() {
-            if (!ws || ws.readyState !== WebSocket.OPEN || !playerId) {
-              return;
-            }
-            let dx = 0;
-            let dy = 0;
-
-            if (keys['ArrowLeft'] || keys['a']) dx -= moveSpeed;
-            if (keys['ArrowRight'] || keys['d']) dx += moveSpeed;
-            if (keys['ArrowUp'] || keys['w']) dy -= moveSpeed;
-            if (keys['ArrowDown'] || keys['s']) dy += moveSpeed;
-
-             if (dx !== 0 || dy !== 0) {
-              ws.send(JSON.stringify({ type: 'move', dx: dx, dy: dy }));
-            }
-        }
-        
-        // Start the game loop
-        draw();
+        // Initial target position.
+        //moveTarget();  This isn't necessary on page load - target position is arbitrary
+         //We *don't* start the game until the first click.
 
     </script>
+
 </body>
 </html>
