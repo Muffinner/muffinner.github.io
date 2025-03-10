@@ -2,204 +2,896 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Liquid Simulation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space FPS Game</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: #1a1a1a;
+            font-family: 'Arial', sans-serif;
+            background-color: #000;
         }
-
-        #simulationCanvas {
-            width: 100%;
+        
+        #gameContainer {
+            position: relative;
+            width: 100vw;
             height: 100vh;
         }
-
-        .controls {
-            position: fixed;
-            top: 20px;
+        
+        #gameWorld {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            perspective: 1000px;
+        }
+        
+        .enemy {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background-color: red;
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            transition: transform 0.05s linear;
+        }
+        
+        .asteroid {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            background-color: #555;
+            border-radius: 20%;
+            transform-style: preserve-3d;
+            transition: transform 0.05s linear;
+        }
+        
+        .plasma-shot {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: #0ff;
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            box-shadow: 0 0 10px 5px #0ff;
+        }
+        
+        .explosion {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle, rgba(255,215,0,1) 0%, rgba(255,87,34,1) 50%, rgba(178,34,34,0) 100%);
+            border-radius: 50%;
+            transform-style: preserve-3d;
+            opacity: 1;
+        }
+        
+        #reticle {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #0f0;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        
+        #reticle::before, #reticle::after {
+            content: '';
+            position: absolute;
+            background-color: #0f0;
+        }
+        
+        #reticle::before {
+            top: 50%;
+            left: -10px;
+            width: 40px;
+            height: 2px;
+            transform: translateY(-50%);
+        }
+        
+        #reticle::after {
+            top: -10px;
+            left: 50%;
+            width: 2px;
+            height: 40px;
+            transform: translateX(-50%);
+        }
+        
+        #hud {
+            position: absolute;
+            bottom: 20px;
             left: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            z-index: 10;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            text-shadow: 0 0 5px #0f0;
+        }
+        
+        #ammo {
+            font-size: 24px;
+        }
+        
+        #health {
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        
+        #score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 5px #0f0;
+        }
+        
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            background-color: #333;
+            margin-top: 5px;
+            border: 1px solid #0f0;
+        }
+        
+        .health-fill {
+            height: 100%;
+            background-color: #0f0;
+            transition: width 0.3s;
+        }
+        
+        #gameMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: #0f0;
+            border: 2px solid #0f0;
+            z-index: 100;
+        }
+        
+        #gameMenu h1 {
+            margin-top: 0;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px #0f0;
+        }
+        
+        #gameMenu button {
+            background-color: transparent;
+            color: #0f0;
+            border: 2px solid #0f0;
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        
+        #gameMenu button:hover {
+            background-color: #0f0;
+            color: #000;
+        }
+        
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            color: #f00;
+            border: 2px solid #f00;
+            z-index: 100;
+            display: none;
+        }
+        
+        #gameOver h1 {
+            margin-top: 0;
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 0 10px #f00;
+        }
+        
+        #gameOver button {
+            background-color: transparent;
+            color: #0f0;
+            border: 2px solid #0f0;
+            padding: 10px 20px;
+            margin: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            transition: all 0.3s;
+        }
+        
+        #gameOver button:hover {
+            background-color: #0f0;
+            color: #000;
+        }
+        
+        .stars {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+        }
+        
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background-color: #fff;
+            border-radius: 50%;
+        }
+        
+        #weapons {
+            position: absolute;
+            bottom: 50px;
+            right: 50px;
+            width: 200px;
+            display: flex;
+            justify-content: space-around;
+        }
+        
+        .weapon {
             padding: 10px;
-            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.5);
+            color: #aaa;
+            border: 1px solid #555;
+            cursor: pointer;
+        }
+        
+        .weapon.active {
+            color: #0f0;
+            border-color: #0f0;
+            box-shadow: 0 0 10px #0f0;
+        }
+        
+        #message {
+            position: absolute;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #0f0;
+            font-size: 24px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.5s;
+            text-shadow: 0 0 5px #0f0;
         }
     </style>
 </head>
 <body>
-    <canvas id="simulationCanvas"></canvas>
-    <div class="controls">
-        <button id="addLiquid">Add Liquid</button>
-        <input type="range" id="viscosity" min="0" max="1" step="0.1">
-        <label for="viscosity">Viscosity</label>
+    <div id="gameContainer">
+        <div id="gameWorld">
+            <div class="stars" id="starfield"></div>
+        </div>
+        <div id="reticle"></div>
+        <div id="hud">
+            <div id="ammo">AMMO: 20/20</div>
+            <div id="health">HEALTH: 100</div>
+            <div class="health-bar">
+                <div class="health-fill" style="width: 100%;"></div>
+            </div>
+        </div>
+        <div id="score">SCORE: 0</div>
+        <div id="weapons">
+            <div class="weapon active" data-weapon="plasma">Plasma</div>
+            <div class="weapon" data-weapon="laser">Laser</div>
+        </div>
+        <div id="message"></div>
+        <div id="gameMenu">
+            <h1>SPACE DEFENDER</h1>
+            <p>Defend your ship against alien invaders and asteroids!</p>
+            <p>Controls: Mouse to aim, Left-click to shoot, R to reload, 1-2 to switch weapons</p>
+            <button id="startGame">START GAME</button>
+        </div>
+        <div id="gameOver">
+            <h1>GAME OVER</h1>
+            <p>Your ship has been destroyed!</p>
+            <p id="finalScore">FINAL SCORE: 0</p>
+            <button id="restartGame">PLAY AGAIN</button>
+        </div>
     </div>
 
     <script>
-class Particle {
-    constructor(x, y, radius) {
-        this.position = { x, y };
-        this.velocity = { x: 0, y: 0 };
-        this.radius = radius;
-        this.density = 1;
-    }
+        // Following SOLID principles:
+        // 1. Single Responsibility Principle: Each class has only one reason to change
+        // 2. Open/Closed Principle: Classes are open for extension but closed for modification
+        // 3. Liskov Substitution Principle: Objects should be replaceable with instances of their subtypes
+        // 4. Interface Segregation Principle: Many client-specific interfaces better than one general interface
+        // 5. Dependency Inversion Principle: Depend on abstractions, not concretions
 
-    update(deltaTime) {
-        this.position.x += this.velocity.x * deltaTime;
-        this.position.y += this.velocity.y * deltaTime;
-    }
-
-    applyForce(force) {
-        this.velocity.x += force.x;
-        this.velocity.y += force.y;
-    }
-}
-
-class PhysicsEngine {
-    constructor(particles) {
-        this.particles = particles;
-        this.forces = [];
-    }
-
-    addForce(force) {
-        this.forces.push(force);
-    }
-
-    update(deltaTime) {
-        this.forces.forEach(force => force.apply(this.particles, deltaTime));
-    }
-}
-
-class Renderer {
-    constructor(canvas) {
-        this.ctx = canvas.getContext('2d');
-        this.canvas = canvas;
-    }
-
-    clear() {
-        this.ctx.fillStyle = '#1a1a1a';
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    }
-
-    renderParticles(particles) {
-        particles.forEach(particle => {
-            this.ctx.beginPath();
-            this.ctx.arc(particle.position.x, particle.position.y, particle.radius, 0, Math.PI * 2);
-            this.ctx.fillStyle = `rgba(50, 150, 255, ${particle.density})`;
-            this.ctx.fill();
-            this.ctx.closePath();
-        });
-    }
-}
-
-class PressureForce {
-    constructor(intensity = 0.5) {
-        this.intensity = intensity;
-    }
-
-    apply(particles, deltaTime) {
-        // Add pressure force implementation here
-        particles.forEach((p1, i) => {
-            particles.slice(i + 1).forEach(p2 => {
-                const dx = p2.position.x - p1.position.x;
-                const dy = p2.position.y - p1.position.y;
-                const distance = Math.sqrt(dx * dx + dy * dy);
+        // Game State Manager
+        class GameState {
+            constructor() {
+                this.isPlaying = false;
+                this.isPaused = false;
+                this.score = 0;
+                this.difficulty = 1;
+            }
+            
+            startGame() {
+                this.isPlaying = true;
+                this.score = 0;
+                this.difficulty = 1;
+                document.getElementById('score').textContent = `SCORE: ${this.score}`;
+            }
+            
+            endGame() {
+                this.isPlaying = false;
+                document.getElementById('finalScore').textContent = `FINAL SCORE: ${this.score}`;
+                document.getElementById('gameOver').style.display = 'block';
+            }
+            
+            addScore(points) {
+                this.score += points;
+                document.getElementById('score').textContent = `SCORE: ${this.score}`;
                 
-                if (distance < p1.radius + p2.radius) {
-                    const angle = Math.atan2(dy, dx);
-                    const force = (p1.radius + p2.radius - distance) * this.intensity;
-                    
-                    p1.velocity.x -= Math.cos(angle) * force;
-                    p1.velocity.y -= Math.sin(angle) * force;
-                    p2.velocity.x += Math.cos(angle) * force;
-                    p2.velocity.y += Math.sin(angle) * force;
-                }
-            });
-        });
-    }
-}
-
-class ViscosityForce {
-    constructor(factor = 0.1) {
-        this.factor = factor;
-    }
-
-    apply(particles, deltaTime) {
-        particles.forEach(particle => {
-            particle.velocity.x *= 1 - this.factor;
-            particle.velocity.y *= 1 - this.factor;
-        });
-    }
-}
-
-class Simulation {
-    constructor(physics, renderer, config) {
-        this.physics = physics;
-        this.renderer = renderer;
-        this.config = config;
-        this.particles = [];
-        this.lastTime = 0;
-    }
-
-    addParticle(particle) {
-        this.particles.push(particle);
-        this.physics.particles = this.particles;
-    }
-
-    #loop(timestamp) {
-        const deltaTime = (timestamp - this.lastTime) / 1000;
-        this.lastTime = timestamp;
-
-        this.physics.update(deltaTime);
-        this.particles.forEach(p => p.update(deltaTime));
-        this.renderer.clear();
-        this.renderer.renderParticles(this.particles);
-
-        requestAnimationFrame(this.#loop.bind(this));
-    }
-
-    start() {
-        requestAnimationFrame(this.#loop.bind(this));
-    }
-}
-
-// Initialize simulation
-(function() {
-    const canvas = document.getElementById('simulationCanvas');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const renderer = new Renderer(canvas);
-    const physics = new PhysicsEngine([]);
-    const simulation = new Simulation(physics, renderer, {});
-
-    physics.addForce(new PressureForce());
-    physics.addForce(new ViscosityForce());
-
-    // Add initial particles
-    for (let i = 0; i < 100; i++) {
-        simulation.addParticle(new Particle(
-            Math.random() * canvas.width,
-            Math.random() * canvas.height,
-            5
-        ));
-    }
-
-    // Interaction
-    canvas.addEventListener('click', (e) => {
-        for (let i = 0; i < 5; i++) {
-            simulation.addParticle(new Particle(
-                e.clientX + Math.random() * 20 - 10,
-                e.clientY + Math.random() * 20 - 10,
-                5
-            ));
+                // Increase difficulty as score increases
+                this.difficulty = 1 + Math.floor(this.score / 500) * 0.5;
+                if (this.difficulty > 5) this.difficulty = 5;
+            }
         }
-    });
 
-    document.getElementById('viscosity').addEventListener('input', (e) => {
-        physics.forces[1].factor = parseFloat(e.target.value);
-    });
+        // Input Handler
+        class InputHandler {
+            constructor(game) {
+                this.game = game;
+                this.keys = {};
+                this.mousePosition = { x: 0, y: 0 };
+                this.isFiring = false;
+                
+                document.addEventListener('keydown', this.handleKeyDown.bind(this));
+                document.addEventListener('keyup', this.handleKeyUp.bind(this));
+                document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+                document.addEventListener('mousedown', this.handleMouseDown.bind(this));
+                document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+                
+                // Lock pointer for FPS controls
+                document.getElementById('gameWorld').addEventListener('click', () => {
+                    if (this.game.gameState.isPlaying) {
+                        document.getElementById('gameWorld').requestPointerLock();
+                    }
+                });
+            }
+            
+            handleKeyDown(e) {
+                this.keys[e.key] = true;
+                
+                // Handle weapon switching
+                if (e.key === '1') {
+                    this.game.player.switchWeapon('plasma');
+                } else if (e.key === '2') {
+                    this.game.player.switchWeapon('laser');
+                }
+                
+                // Handle reloading
+                if (e.key === 'r' || e.key === 'R') {
+                    this.game.player.reload();
+                }
+            }
+            
+            handleKeyUp(e) {
+                this.keys[e.key] = false;
+            }
+            
+            handleMouseMove(e) {
+                if (document.pointerLockElement === document.getElementById('gameWorld')) {
+                    this.mouseDeltaX = e.movementX || 0;
+                    this.mouseDeltaY = e.movementY || 0;
+                } else {
+                    this.mousePosition.x = e.clientX;
+                    this.mousePosition.y = e.clientY;
+                }
+            }
+            
+            handleMouseDown(e) {
+                if (e.button === 0) { // Left mouse button
+                    this.isFiring = true;
+                }
+            }
+            
+            handleMouseUp(e) {
+                if (e.button === 0) { // Left mouse button
+                    this.isFiring = false;
+                }
+            }
+        }
 
-    simulation.start();
-})();
-    </script>
-</body>
-</html>
+        // Camera system
+        class Camera {
+            constructor() {
+                this.position = { x: 0, y: 0, z: 0 };
+                this.rotation = { x: 0, y: 0, z: 0 };
+                this.lookSensitivity = 0.5;
+            }
+            
+            update(inputHandler) {
+                if (document.pointerLockElement === document.getElementById('gameWorld')) {
+                    // Update rotation based on mouse movement
+                    this.rotation.y -= inputHandler.mouseDeltaX * this.lookSensitivity * 0.01;
+                    this.rotation.x -= inputHandler.mouseDeltaY * this.lookSensitivity * 0.01;
+                    
+                    // Limit vertical rotation
+                    this.rotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, this.rotation.x));
+                    
+                    // Reset mouse delta
+                    inputHandler.mouseDeltaX = 0;
+                    inputHandler.mouseDeltaY = 0;
+                }
+            }
+        }
+
+        // Entity interface
+        class Entity {
+            constructor(id, type, position) {
+                this.id = id;
+                this.type = type;
+                this.position = position;
+                this.rotation = { x: 0, y: 0, z: 0 };
+                this.element = null;
+                this.isActive = true;
+            }
+            
+            update() {
+                // To be overridden by subclasses
+            }
+            
+            render() {
+                // To be overridden by subclasses
+            }
+            
+            destroy() {
+                if (this.element && this.element.parentNode) {
+                    this.element.parentNode.removeChild(this.element);
+                }
+                this.isActive = false;
+            }
+        }
+
+        // Player class
+        class Player {
+            constructor(game) {
+                this.game = game;
+                this.camera = new Camera();
+                this.health = 100;
+                this.maxHealth = 100;
+                this.weapons = {
+                    plasma: new PlasmaWeapon(this),
+                    laser: new LaserWeapon(this)
+                };
+                this.currentWeapon = this.weapons.plasma;
+                this.updateHUD();
+            }
+            
+            update(inputHandler) {
+                this.camera.update(inputHandler);
+                
+                // Handle weapon firing
+                if (inputHandler.isFiring) {
+                    this.currentWeapon.fire();
+                }
+                
+                // Update current weapon
+                this.currentWeapon.update();
+            }
+            
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health <= 0) {
+                    this.health = 0;
+                    this.game.gameState.endGame();
+                }
+                this.updateHUD();
+            }
+            
+            heal(amount) {
+                this.health += amount;
+                if (this.health > this.maxHealth) {
+                    this.health = this.maxHealth;
+                }
+                this.updateHUD();
+            }
+            
+            switchWeapon(weaponType) {
+                if (this.weapons[weaponType]) {
+                    this.currentWeapon = this.weapons[weaponType];
+                    
+                    // Update UI
+                    document.querySelectorAll('.weapon').forEach(el => {
+                        el.classList.remove('active');
+                    });
+                    document.querySelector(`.weapon[data-weapon="${weaponType}"]`).classList.add('active');
+                    
+                    this.updateHUD();
+                    this.showMessage(`WEAPON: ${weaponType.toUpperCase()}`);
+                }
+            }
+            
+            reload() {
+                this.currentWeapon.reload();
+            }
+            
+            updateHUD() {
+                document.getElementById('health').textContent = `HEALTH: ${this.health}`;
+                document.querySelector('.health-fill').style.width = `${this.health}%`;
+                document.getElementById('ammo').textContent = `AMMO: ${this.currentWeapon.currentAmmo}/${this.currentWeapon.maxAmmo}`;
+            }
+            
+            showMessage(text) {
+                const messageEl = document.getElementById('message');
+                messageEl.textContent = text;
+                messageEl.style.opacity = '1';
+                
+                setTimeout(() => {
+                    messageEl.style.opacity = '0';
+                }, 2000);
+            }
+        }
+
+        // Weapon abstract class
+        class Weapon {
+            constructor(player) {
+                this.player = player;
+                this.game = player.game;
+                this.currentAmmo = 0;
+                this.maxAmmo = 0;
+                this.reloadTime = 1000;
+                this.isReloading = false;
+                this.lastFireTime = 0;
+                this.fireRate = 250; // ms between shots
+            }
+            
+            fire() {
+                // To be overridden by subclasses
+            }
+            
+            canFire() {
+                const now = Date.now();
+                return (
+                    !this.isReloading &&
+                    this.currentAmmo > 0 &&
+                    now - this.lastFireTime >= this.fireRate
+                );
+            }
+            
+            reload() {
+                if (!this.isReloading && this.currentAmmo < this.maxAmmo) {
+                    this.isReloading = true;
+                    this.player.showMessage("RELOADING...");
+                    
+                    setTimeout(() => {
+                        this.currentAmmo = this.maxAmmo;
+                        this.isReloading = false;
+                        this.player.updateHUD();
+                        this.player.showMessage("RELOAD COMPLETE");
+                    }, this.reloadTime);
+                }
+            }
+            
+            update() {
+                // Common update logic for all weapons
+            }
+        }
+
+        // Concrete Weapon: Plasma Gun
+        class PlasmaWeapon extends Weapon {
+            constructor(player) {
+                super(player);
+                this.maxAmmo = 20;
+                this.currentAmmo = this.maxAmmo;
+                this.damage = 25;
+                this.projectileSpeed = 30;
+                this.fireRate = 300;
+            }
+            
+            fire() {
+                if (this.canFire()) {
+                    this.lastFireTime = Date.now();
+                    this.currentAmmo--;
+                    
+                    const cameraDir = {
+                        x: Math.sin(this.player.camera.rotation.y) * Math.cos(this.player.camera.rotation.x),
+                        y: Math.sin(this.player.camera.rotation.x),
+                        z: Math.cos(this.player.camera.rotation.y) * Math.cos(this.player.camera.rotation.x)
+                    };
+                    
+                    const projectile = new Projectile(
+                        'p' + Date.now(),
+                        'plasma',
+                        { x: 0, y: 0, z: 0 },
+                        cameraDir,
+                        this.projectileSpeed,
+                        this.damage,
+                        this.game
+                    );
+                    
+                    this.game.addEntity(projectile);
+                    this.player.updateHUD();
+                    
+                    // Auto-reload when empty
+                    if (this.currentAmmo === 0) {
+                        this.reload();
+                    }
+                } else if (this.currentAmmo === 0 && !this.isReloading) {
+                    this.player.showMessage("OUT OF AMMO - PRESS R TO RELOAD");
+                }
+            }
+        }
+
+        // Concrete Weapon: Laser Gun
+        class LaserWeapon extends Weapon {
+            constructor(player) {
+                super(player);
+                this.maxAmmo = 50;
+                this.currentAmmo = this.maxAmmo;
+                this.damage = 10;
+                this.projectileSpeed = 50;
+                this.fireRate = 100;
+            }
+            
+            fire() {
+                if (this.canFire()) {
+                    this.lastFireTime = Date.now();
+                    this.currentAmmo--;
+                    
+                    const cameraDir = {
+                        x: Math.sin(this.player.camera.rotation.y) * Math.cos(this.player.camera.rotation.x),
+                        y: Math.sin(this.player.camera.rotation.x),
+                        z: Math.cos(this.player.camera.rotation.y) * Math.cos(this.player.camera.rotation.x)
+                    };
+                    
+                    const projectile = new Projectile(
+                        'l' + Date.now(),
+                        'laser',
+                        { x: 0, y: 0, z: 0 },
+                        cameraDir,
+                        this.projectileSpeed,
+                        this.damage,
+                        this.game
+                    );
+                    
+                    this.game.addEntity(projectile);
+                    this.player.updateHUD();
+                    
+                    // Auto-reload when empty
+                    if (this.currentAmmo === 0) {
+                        this.reload();
+                    }
+                } else if (this.currentAmmo === 0 && !this.isReloading) {
+                    this.player.showMessage("OUT OF AMMO - PRESS R TO RELOAD");
+                }
+            }
+        }
+
+        // Projectile class
+        class Projectile extends Entity {
+            constructor(id, type, position, direction, speed, damage, game) {
+                super(id, type, position);
+                this.direction = direction;
+                this.speed = speed;
+                this.damage = damage;
+                this.game = game;
+                this.lifeTime = 3000; // ms before auto-destroy
+                this.creationTime = Date.now();
+                
+                // Create DOM element
+                this.element = document.createElement('div');
+                this.element.className = 'plasma-shot';
+                if (type === 'laser') {
+                    this.element.style.backgroundColor = '#f00';
+                    this.element.style.boxShadow = '0 0 10px 5px #f00';
+                    this.element.style.width = '5px';
+                    this.element.style.height = '15px';
+                }
+                document.getElementById('gameWorld').appendChild(this.element);
+            }
+            
+            update() {
+                // Move the projectile
+                this.position.x += this.direction.x * this.speed;
+                this.position.y += this.direction.y * this.speed;
+                this.position.z += this.direction.z * this.speed;
+                
+                // Check for collisions with enemies
+                this.checkCollisions();
+                
+                // Auto-destroy after lifetime
+                if (Date.now() - this.creationTime > this.lifeTime) {
+                    this.destroy();
+                }
+            }
+            
+            render() {
+                if (this.element) {
+                    // Convert 3D position to screen position
+                    const screenPos = this.game.worldToScreen(this.position);
+                    
+                    if (screenPos.visible) {
+                        this.element.style.display = 'block';
+                        this.element.style.left = `${screenPos.x}px`;
+                        this.element.style.top = `${screenPos.y}px`;
+                        
+                        // Scale based on distance for 3D effect
+                        const scale = Math.max(0.1, 1 / Math.max(1, -this.position.z / 500));
+                        this.element.style.transform = `scale(${scale})`;
+                    } else {
+                        this.element.style.display = 'none';
+                    }
+                }
+            }
+            
+            checkCollisions() {
+                for (const entity of this.game.entities) {
+                    if ((entity.type === 'enemy' || entity.type === 'asteroid') && entity.isActive) {
+                        // Simple distance-based collision
+                        const dx = this.position.x - entity.position.x;
+                        const dy = this.position.y - entity.position.y;
+                        const dz = this.position.z - entity.position.z;
+                        const distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                        
+                        if (distance < (entity.type === 'asteroid' ? 40 : 25)) { // Larger collision radius for asteroids
+                            entity.takeDamage(this.damage);
+                            this.destroy();
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        // Enemy class
+        class Enemy extends Entity {
+            constructor(id, position, game) {
+                super(id, 'enemy', position);
+                this.game = game;
+                this.health = 50;
+                this.speed = 2 + Math.random() * game.gameState.difficulty;
+                this.lastShotTime = 0;
+                this.shootInterval = 3000 - game.gameState.difficulty * 300;
+                this.damage = 5 + Math.floor(game.gameState.difficulty);
+                
+                // Create DOM element
+                this.element = document.createElement('div');
+                this.element.className = 'enemy';
+                document.getElementById('gameWorld').appendChild(this.element);
+            }
+            
+            update() {
+                // Move toward player (origin)
+                const dx = 0 - this.position.x;
+                const dy = 0 - this.position.y;
+                const dz = 0 - this.position.z;
+                const length = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                
+                if (length > 10) { // Stop moving when close
+                    this.position.x += (dx / length) * this.speed;
+                    this.position.y += (dy / length) * this.speed;
+                    this.position.z += (dz / length) * this.speed;
+                }
+                
+                // Random movement jitter
+                this.position.x += (Math.random() - 0.5) * 1;
+                this.position.y += (Math.random() - 0.5) * 1;
+                
+                // Shoot at player
+                const now = Date.now();
+                if (now - this.lastShotTime > this.shootInterval) {
+                    this.lastShotTime = now;
+                    this.shootAtPlayer();
+                }
+                
+                // Check if reached player
+                if (length < 20) {
+                    // Damage player
+                    this.game.player.takeDamage(this.damage * 2);
+                    this.createExplosion();
+                    this.destroy();
+                }
+            }
+            
+            render() {
+                if (this.element) {
+                    // Convert 3D position to screen position
+                    const screenPos = this.game.worldToScreen(this.position);
+                    
+                    if (screenPos.visible) {
+                        this.element.style.display = 'block';
+                        this.element.style.left = `${screenPos.x}px`;
+                        this.element.style.top = `${screenPos.y}px`;
+                        
+                        // Scale based on distance for 3D effect
+                        const scale = Math.max(0.1, 1 / Math.max(1, -this.position.z / 1000));
+                        this.element.style.transform = `scale(${scale})`;
+                    } else {
+                        this.element.style.display = 'none';
+                    }
+                }
+            }
+            
+            takeDamage(amount) {
+                this.health -= amount;
+                if (this.health <= 0) {
+                    this.game.gameState.addScore(50);
+                    this.createExplosion();
+                    this.destroy();
+                }
+            }
+            
+            shootAtPlayer() {
+                // Calculate direction to player
+                const dir = {
+                    x: -this.position.x,
+                    y: -this.position.y,
+                    z: -this.position.z
+                };
+                
+                // Normalize
+                const length = Math.sqrt(dir.x*dir.x + dir.y*dir.y + dir.z*dir.z);
+                dir.x /= length;
+                dir.y /= length;
+                dir.z /= length;
+                
+                // Add some randomness
+                dir.x += (Math.random() - 0.5) * 0.2;
+                dir.y += (Math.random() - 0.5) * 0.2;
+                dir.z += (Math.random() - 0.5) * 0.2;
+                
+                // Create enemy projectile
+                const projectile = new EnemyProjectile(
+                    'ep' + Date.now(),
+                    this.position,
+                    dir,
+                    10,
+                    this.damage,
+                    this.game
+                );
+                
+                this.game.addEntity(projectile);
+            }
+            
+            createExplosion() {
+                const explosion = new Explosion(
+                    'exp' + Date.now(),
+                    { ...this.position },
+                    this.game
+                );
+                this.game.addEntity(explosion);
+            }
+        }
+
+        // Asteroid class
+        class Asteroid extends Entity {
+            constructor(id, position, game) {
+                super(id, 'asteroid', position);
+                this.game = game;
+                this.health = 100;
+                this.speed = 1 + Math.random() * 2;
+                this.rotationSpeed = {
+                    x: (Math.random() - 0.5) * 0.05,
+                    y: (Math.random() - 0.5) * 0.05,
+                    z: (Math.random() - 0.5) * 0.05
+                };
+                this.damage = 20;
+                
+                // Create DOM element
+                this.element = document.createElement('div');
+                this.element.className = 'asteroid';
+                document.getElementById('gameWorld').appendChild(this.element);
+            }
+            
+            update() {
