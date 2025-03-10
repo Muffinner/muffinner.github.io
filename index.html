@@ -41,7 +41,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            pointer-events: none; /* Allow clicks to pass through to canvas if needed */
+            /* REMOVED pointer-events: none;  - This was making buttons unclickable! */
         }
 
         #score, #lives {
@@ -418,7 +418,7 @@
         }
 
         function resetGame() {
-            console.log('resetGame() called'); // ADDED CONSOLE LOG FOR DEBUGGING
+            console.log('resetGame() called');
             score = 0;
             lives = 3;
             level = 1;
@@ -440,9 +440,9 @@
         }
 
         function gameLoop() {
-            console.log('gameLoop() called'); // ADDED CONSOLE LOG FOR DEBUGGING
+            console.log('gameLoop() called');
             if (!gameRunning) {
-                console.log('gameLoop() - gameRunning is false, exiting'); // ADDED CONSOLE LOG FOR DEBUGGING
+                console.log('gameLoop() - gameRunning is false, exiting');
                 return;
             } // Stop loop if game is not running
 
@@ -515,7 +515,7 @@
         });
 
         startGameButton.addEventListener('click', () => {
-            console.log('Start Game button clicked!'); // ADDED CONSOLE LOG FOR DEBUGGING
+            console.log('Start Game button clicked!');
             resetGame();
             startScreen.classList.add('hidden');
             gameLoop();
