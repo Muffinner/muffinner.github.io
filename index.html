@@ -8,6 +8,7 @@
         body {
             margin: 0;
             display: flex;
+            flex-direction: column; /* Stack canvas and button vertically */
             justify-content: center;
             align-items: center;
             height: 100vh;
@@ -19,10 +20,55 @@
             background-color: #222; /* Dark gray background for the game */
             border: 1px solid white; /* Optional border */
         }
+
+        #instructionsButton {
+            margin-top: 10px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        #instructionsPopup {
+            display: none; /* Initially hidden */
+            position: fixed; /* Stay in place even when scrolling */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #f0f0f0;
+            padding: 20px;
+            border: 2px solid #333;
+            z-index: 1000; /* Make sure it's on top */
+            max-width: 80%;  /* Responsive width */
+            max-height: 80%; /* Responsive height */
+            overflow: auto;  /* Add scrollbars if content overflows */
+        }
+        #closeButton {
+            background-color: #f44336;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+            margin-top: 10px; /* Add some space between text and button */
+        }
     </style>
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
+    <button id="instructionsButton">Instructions</button>
+
+    <div id="instructionsPopup">
+        <h2>Instructions</h2>
+        <p>
+            Use the arrow keys (or WASD) to move your spaceship.
+            Press Spacebar (or Left Mouse click) to shoot.
+            Destroy enemies to earn points.
+            Avoid being hit by enemies. Your health is shown at the top.
+            Reach a score of 500 to win!
+        </p>
+        <button id="closeButton">Close</button>
+    </div>
 
     <script>
         // renderer.js
@@ -37,20 +83,25 @@
             }
 
             draw(gameObject) {
-                if (gameObject.image) {
-                    this.ctx.drawImage(
-                        gameObject.image,
-                        gameObject.x,
-                        gameObject.y,
-                        gameObject.width,
-                        gameObject.height
-                    );
+                if (gameObject.image && gameObject.image.complete && gameObject.image.naturalWidth !== 0) {
+                  this.ctx.drawImage(
+                      gameObject.image,
+                      gameObject.x,
+                      gameObject.y,
+                      gameObject.width,
+                      gameObject.height
+                  );
                 } else {
                     // Fallback for objects without images (e.g., draw a rectangle)
                     this.ctx.fillStyle = gameObject.color || 'white';
+                    //For the player, force green:
+                    if (gameObject instanceof Player) {
+                        this.ctx.fillStyle = 'green';
+                    }
                     this.ctx.fillRect(gameObject.x, gameObject.y, gameObject.width, gameObject.height);
                 }
             }
+
 
             drawText(text, x, y, color = 'white', font = '16px Arial') {
                 this.ctx.fillStyle = color;
@@ -155,10 +206,13 @@
                         if (bullet.collidesWith(target)) {
                             target.takeDamage(bullet.damage);
                             bullet.isActive = false; // Remove bullet on collision
-                            break; // Exit inner loop after collision
+                             // No break here, as we handle score in Game now.
+                            return true; // Indicate a collision occurred.
+
                         }
                     }
                 }
+                return false; // No collision.
             }
         }
 
@@ -176,6 +230,7 @@
                 this.shootCooldown = 250; //ms
                 this.lastShotTime = 0;
                 this.health = 100; // add healt
+                this.color = 'green'; // Ensure green color
             }
 
             update(deltaTime) {
@@ -226,6 +281,7 @@
                 this.image = image;
                 this.isActive = true; // For removing off-screen/dead enemies.
                 this.health = 30; // add health
+                this.color = 'red';
             }
 
             update(deltaTime) {
@@ -244,17 +300,22 @@
 
         // ui.js
         class UI {
-            constructor(player, renderer) {
-                this.player = player;
-                this.renderer = renderer; // Use the renderer for drawing
+            constructor(player, renderer, game) { // Add game reference
+              this.player = player;
+              this.renderer = renderer;
+              this.game = game; // Store the game reference
             }
 
             update() {
-                // Display score, health, etc.
-                this.renderer.drawText(`Health: ${this.player.health}`, 10, 20);
-                // this.renderer.drawText(`Score: ${this.score}`, 10, 40); // Example score display
+              // Display score, health, etc.
+              this.renderer.drawText(`Health: ${this.player.health}`, 10, 20);
+              this.renderer.drawText(`Score: ${this.game.score}`, 10, 40); // Use game.score
 
+                if (this.game.gameOver) {
+                    this.renderer.drawText("Game Over - You Win!", 300, 280, "red", "32px Arial");
+                }
             }
+
         }
 
 
@@ -338,12 +399,29 @@
                 // VERY IMPORTANT: Use the placeholder for now.  Replace later!
                 this.enemyImage.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
-                this.ui = new UI(this.player, this.renderer);  // create UI
+                this.score = 0; // Add score
+                this.gameOver = false; // Game over flag
+                this.goalScore = 500; // Winning score
+
+                this.ui = new UI(this.player, this.renderer, this);  // create UI. Pass 'this' (the Game instance) to UI.
                 this.network = new Network(); //create network
                 this.network.connect('ws://localhost:8080')  // IMPORTANT: Replace with your server address!  This is just an example.
 
                 this.lastFrameTime = 0;
                 this.gameLoop = this.gameLoop.bind(this); // Bind the gameLoop to the Game instance
+
+                 // Instructions popup logic
+                this.instructionsButton = document.getElementById('instructionsButton');
+                this.instructionsPopup = document.getElementById('instructionsPopup');
+                this.closeButton = document.getElementById('closeButton');
+
+                this.instructionsButton.addEventListener('click', () => {
+                    this.instructionsPopup.style.display = 'block';
+                });
+
+                this.closeButton.addEventListener('click', () => {
+                    this.instructionsPopup.style.display = 'none';
+                });
 
             }
 
@@ -354,6 +432,8 @@
             }
 
             gameLoop(timestamp) {
+                if (this.gameOver) return; // Stop the loop if the game is over
+
                 const deltaTime = (timestamp - this.lastFrameTime) / 1000; // Delta time in seconds
                 this.lastFrameTime = timestamp;
 
@@ -370,16 +450,24 @@
                 }
 
                 this.player.update(deltaTime);
-                this.bulletSpawner.update(deltaTime);  //Update the bulltes
+                this.bulletSpawner.update(deltaTime);  //Update the bullets
 
-                // Enemy update and removal
+                 // Enemy update, removal, and score update
                 for (let i = this.enemies.length - 1; i >= 0; i--) {
-                    this.enemies[i].update(deltaTime);
+                  this.enemies[i].update(deltaTime);
+
                     if (!this.enemies[i].isActive) {
                         this.enemies.splice(i, 1);
                     }
                 }
-                this.bulletSpawner.checkCollisions(this.enemies);  //Check for collisions
+
+              //Check collisions and if an enemy has been hit
+               if( this.bulletSpawner.checkCollisions(this.enemies)){
+                 this.score += 10;
+                 if (this.score >= this.goalScore) {
+                      this.gameOver = true;
+                    }
+               }
                 this.ui.update(); // Update UI
 
                 // Send player data to server (throttled)
