@@ -1,978 +1,416 @@
-<!-- index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Procedural FPS</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Simple FPS Shooter</title>
+    <style>
+        /* --- CSS: css/style.css --- */
+        body {
+            margin: 0;
+            overflow: hidden; /* Prevent scrollbars */
+            background-color: #222; /* Dark background */
+        }
+
+        #gameCanvas {
+            display: block; /* Remove extra space below canvas */
+            background-color: #333; /* Canvas background */
+        }
+        /* --- End CSS: css/style.css --- */
+    </style>
 </head>
 <body>
-    <div id="game-container">
-        <canvas id="game-canvas"></canvas>
-        <div id="hud">
-            <div id="health-bar">
-                <div id="health-fill"></div>
-            </div>
-            <div id="ammo-counter">30 / 90</div>
-            <div id="weapon-name">Assault Rifle</div>
-            <div id="score">Score: 0</div>
-        </div>
-        <div id="crosshair">+</div>
-    </div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
 
-    <div id="menu" class="active">
-        <h1>PROCEDURAL FPS</h1>
-        <button id="start-button">Start Game</button>
-        <div id="weapon-selection">
-            <h2>Select Starting Weapon:</h2>
-            <div class="weapon-option selected" data-weapon="assaultRifle">
-                <h3>Assault Rifle</h3>
-                <p>Balanced weapon with moderate fire rate and damage</p>
-            </div>
-            <div class="weapon-option" data-weapon="shotgun">
-                <h3>Shotgun</h3>
-                <p>High damage at close range, slow fire rate</p>
-            </div>
-            <div class="weapon-option" data-weapon="smg">
-                <h3>SMG</h3>
-                <p>High fire rate, lower damage per shot</p>
-            </div>
-        </div>
-        <div id="difficulty">
-            <h2>Difficulty:</h2>
-            <select id="difficulty-select">
-                <option value="easy">Easy</option>
-                <option value="normal" selected>Normal</option>
-                <option value="hard">Hard</option>
-            </select>
-        </div>
-    </div>
+    <script>
+        /* --- JavaScript: js/player.js --- */
+        class Player {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 20;
+                this.height = 20;
+                this.color = 'blue';
+                this.speed = 150; // pixels per second
+                this.health = 100;
+                this.directionX = 0;
+                this.directionY = 0;
+            }
 
-    <div id="game-over" class="hidden">
-        <h1>GAME OVER</h1>
-        <h2>Score: <span id="final-score">0</span></h2>
-        <button id="restart-button">Play Again</button>
-    </div>
+            update(deltaTime, level) {
+                // Movement based on input direction
+                this.x += this.directionX * this.speed * deltaTime;
+                this.y += this.directionY * this.speed * deltaTime;
 
-    <!-- Scripts -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/config.js"></script>
-    <script src="js/input.js"></script>
-    <script src="js/weapons.js"></script>
-    <script src="js/enemy.js"></script>
-    <script src="js/player.js"></script>
-    <script src="js/procedural-generator.js"></script>
-    <script src="js/game.js"></script>
-    <script src="js/ui.js"></script>
-    <script src="js/main.js"></script>
+                // Collision detection with level walls
+                this.collideWithWalls(level);
+            }
+
+            collideWithWalls(level) {
+                level.walls.forEach(wall => {
+                    if (this.checkCollision(wall)) {
+                        // Very basic collision response - just stop movement
+                        if (this.directionX > 0) this.x = wall.x - this.width; // Right collision
+                        if (this.directionX < 0) this.x = wall.x + wall.width; // Left collision
+                        if (this.directionY > 0) this.y = wall.y - this.height; // Bottom collision
+                        if (this.directionY < 0) this.y = wall.y + wall.height; // Top collision
+                    }
+                });
+            }
+
+            checkCollision(wall) {
+                return (
+                    this.x < wall.x + wall.width &&
+                    this.x + this.width > wall.x &&
+                    this.y < wall.y + wall.height &&
+                    this.y + this.height > wall.y
+                );
+            }
+
+            takeDamage(damage) {
+                this.health -= damage;
+                if (this.health < 0) {
+                    this.health = 0; // Game over logic would go here
+                    console.log("Game Over!");
+                }
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+        /* --- End JavaScript: js/player.js --- */
+    </script>
+
+    <script>
+        /* --- JavaScript: js/weapon.js --- */
+        class Weapon {
+            constructor(name, damage, fireRate) {
+                this.name = name;
+                this.damage = damage;
+                this.fireRate = fireRate; // Shots per second
+                this.lastFireTime = 0;
+            }
+
+            shoot(player, enemies, currentTime) {
+                if (currentTime - this.lastFireTime > 1 / this.fireRate) {
+                    this.lastFireTime = currentTime;
+                    console.log(`${this.name} fired!`);
+                    // Implement projectile or raycast logic here to hit enemies
+                    this.handleShootingLogic(player, enemies);
+                }
+            }
+
+            handleShootingLogic(player, enemies) {
+                // This is a placeholder for actual shooting logic.
+                // Subclasses will implement specific shooting behaviors.
+                console.log("Base weapon shooting logic - override in subclasses");
+            }
+        }
+
+        class Pistol extends Weapon {
+            constructor() {
+                super('Pistol', 10, 2); // Name, Damage, Fire Rate
+            }
+
+            handleShootingLogic(player, enemies) {
+                console.log("Pistol shooting logic - finding closest enemy (simplified)");
+                let closestEnemy = null;
+                let minDistance = Infinity;
+
+                enemies.forEach(enemy => {
+                    const distance = Math.sqrt(Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2));
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestEnemy = enemy;
+                    }
+                });
+
+                if (closestEnemy) {
+                    closestEnemy.takeDamage(this.damage);
+                    console.log(`Pistol hit enemy! Damage: ${this.damage}`);
+                } else {
+                    console.log("No enemies in range for Pistol.");
+                }
+            }
+        }
+        /* --- End JavaScript: js/weapon.js --- */
+    </script>
+
+    <script>
+        /* --- JavaScript: js/level.js --- */
+        class LevelGenerator {
+            constructor(width, height) {
+                this.levelWidth = width;
+                this.levelHeight = height;
+                this.cellSize = 50; // Size of each grid cell for level generation
+            }
+
+            generateLevel() {
+                const level = { walls: [] };
+                const gridWidth = Math.floor(this.levelWidth / this.cellSize);
+                const gridHeight = Math.floor(this.levelHeight / this.cellSize);
+
+                // Simple random wall generation
+                for (let x = 0; x < gridWidth; x++) {
+                    for (let y = 0; y < gridHeight; y++) {
+                        if (Math.random() < 0.2) { // 20% chance of a wall
+                            level.walls.push({
+                                x: x * this.cellSize,
+                                y: y * this.cellSize,
+                                width: this.cellSize,
+                                height: this.cellSize
+                            });
+                        }
+                    }
+                }
+                return level;
+            }
+        }
+        /* --- End JavaScript: js/level.js --- */
+    </script>
+
+    <script>
+        /* --- JavaScript: js/enemy.js --- */
+        class Enemy {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.width = 20;
+                this.height = 20;
+                this.color = 'red';
+                this.speed = 80;
+                this.health = 50;
+            }
+
+            update(deltaTime, player, level) {
+                // Simple AI: Move towards player
+                const dx = player.x - this.x;
+                const dy = player.y - this.y;
+                const angle = Math.atan2(dy, dx);
+
+                this.x += Math.cos(angle) * this.speed * deltaTime;
+                this.y += Math.sin(angle) * this.speed * deltaTime;
+
+                this.collideWithWalls(level); // Prevent enemies from going through walls
+            }
+
+            collideWithWalls(level) {
+                level.walls.forEach(wall => {
+                    if (this.checkCollision(wall)) {
+                        // Simple collision response - move slightly away
+                        const dx = this.x - wall.x;
+                        const dy = this.y - wall.y;
+                        const angle = Math.atan2(dy, dx);
+                        this.x += Math.cos(angle) * 10 * deltaTime; // Move away slightly
+                        this.y += Math.sin(angle) * 10 * deltaTime;
+                    }
+                });
+            }
+
+            checkCollision(wall) {
+                return (
+                    this.x < wall.x + wall.width &&
+                    this.x + this.width > wall.x &&
+                    this.y < wall.y + wall.height &&
+                    this.y + this.height > wall.y
+                );
+            }
+
+            takeDamage(damage) {
+                this.health -= damage;
+                if (this.health < 0) {
+                    this.health = 0;
+                    console.log("Enemy defeated!");
+                }
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+            }
+        }
+        /* --- End JavaScript: js/enemy.js --- */
+    </script>
+
+    <script>
+        /* --- JavaScript: js/ui.js --- */
+        class UI {
+            constructor(player, currentWeapon) {
+                this.player = player;
+                this.currentWeapon = currentWeapon;
+            }
+
+            update(player, currentWeapon) {
+                this.player = player; // Update player reference if needed
+                this.currentWeapon = currentWeapon; // Update weapon reference
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = 'white';
+                ctx.font = '16px Arial';
+                ctx.fillText(`Health: ${this.player.health}`, 10, 20);
+                ctx.fillText(`Weapon: ${this.currentWeapon.name}`, 10, 40);
+                // Add more UI elements here (ammo, score, etc.)
+            }
+        }
+        /* --- End JavaScript: js/ui.js --- */
+    </script>
+
+    <script>
+        /* --- JavaScript: js/input.js --- */
+        class InputHandler {
+            constructor(player, currentWeapon, canvas) {
+                this.player = player;
+                this.currentWeapon = currentWeapon;
+                this.canvas = canvas;
+                this.keys = []; // Track pressed keys
+
+                window.addEventListener('keydown', (e) => {
+                    if (this.keys.indexOf(e.key) === -1) {
+                        this.keys.push(e.key);
+                    }
+                    this.handleKeyboardInput(e.key);
+                });
+
+                window.addEventListener('keyup', (e) => {
+                    this.keys = this.keys.filter(key => key !== e.key);
+                    this.handleKeyboardInput(e.key, true); // Pass keyup event
+                });
+
+                this.canvas.addEventListener('mousedown', (e) => {
+                    this.handleMouseClick(e);
+                });
+            }
+
+            updateWeapon(newWeapon) {
+                this.currentWeapon = newWeapon; // To change weapons later if needed
+            }
+
+            handleKeyboardInput(key, keyUp = false) {
+                switch (key) {
+                    case 'w':
+                    case 'W':
+                        this.player.directionY = keyUp ? (this.keys.includes('s') || this.keys.includes('S') ? 1 : 0) : -1;
+                        break;
+                    case 's':
+                    case 'S':
+                        this.player.directionY = keyUp ? (this.keys.includes('w') || this.keys.includes('W') ? -1 : 0) : 1;
+                        break;
+                    case 'a':
+                    case 'A':
+                        this.player.directionX = keyUp ? (this.keys.includes('d') || this.keys.includes('D') ? 1 : 0) : -1;
+                        break;
+                    case 'd':
+                    case 'D':
+                        this.player.directionX = keyUp ? (this.keys.includes('a') || this.keys.includes('A') ? -1 : 0) : 1;
+                        break;
+                }
+            }
+
+            handleMouseClick(event) {
+                const currentTime = performance.now() / 1000; // Convert to seconds
+                this.currentWeapon.shoot(game.enemies, currentTime); // Assuming 'game' is globally accessible (for now - improve later)
+            }
+        }
+        /* --- End JavaScript: js/input.js --- */
+    </script>
+
+    <script>
+        /* --- JavaScript: js/game.js --- */
+        // game.js - Orchestrates the game, main loop, and initialization
+
+        class Game {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.player = new Player(this.canvas.width / 2, this.canvas.height / 2);
+                this.levelGenerator = new LevelGenerator(this.canvas.width, this.canvas.height);
+                this.level = this.levelGenerator.generateLevel(); // Generate procedural level
+                this.enemies = [new Enemy(100, 100), new Enemy(700, 500)]; // Example enemies
+                this.weapons = {
+                    pistol: new Pistol() // Example weapon
+                    // Add more weapons here later (e.g., shotgun, rifle)
+                };
+                this.currentWeapon = this.weapons.pistol; // Start with pistol
+                this.ui = new UI(this.player, this.currentWeapon);
+                this.inputHandler = new InputHandler(this.player, this.currentWeapon, this.canvas);
+
+                // Make game.enemies globally accessible for input.js (TEMPORARY - improve later with better state management)
+                window.game = this; // BAD PRACTICE for large projects, but okay for this simple example to avoid module issues quickly.
+
+                this.lastTime = 0;
+                this.gameLoop();
+            }
+
+            gameLoop(timestamp) {
+                const deltaTime = timestamp - this.lastTime;
+                this.lastTime = timestamp;
+
+                this.update(deltaTime);
+                this.draw();
+
+                requestAnimationFrame(this.gameLoop.bind(this));
+            }
+
+            update(deltaTime) {
+                this.player.update(deltaTime, this.level);
+                this.enemies.forEach(enemy => enemy.update(deltaTime, this.player, this.level));
+
+                // Weapon firing logic is handled in InputHandler based on player input
+                // (see input.js)
+
+                // Enemy collision with player (simple example)
+                this.enemies.forEach(enemy => {
+                    if (this.checkCollision(this.player, enemy)) {
+                        this.player.takeDamage(10); // Example damage
+                    }
+                });
+
+                // Check if enemies are dead and remove them (example)
+                this.enemies = this.enemies.filter(enemy => enemy.health > 0);
+
+                this.ui.update(this.player, this.currentWeapon); // Update UI elements
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                // Draw Level
+                this.drawLevel();
+
+                // Draw Enemies
+                this.enemies.forEach(enemy => enemy.draw(this.ctx));
+
+                // Draw Player
+                this.player.draw(this.ctx);
+
+                // Draw UI
+                this.ui.draw(this.ctx);
+            }
+
+            drawLevel() {
+                this.ctx.fillStyle = '#555'; // Wall color
+                this.level.walls.forEach(wall => {
+                    this.ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+                });
+            }
+
+            checkCollision(entity1, entity2) {
+                // Simple AABB collision detection (Axis-Aligned Bounding Boxes)
+                return (
+                    entity1.x < entity2.x + entity2.width &&
+                    entity1.x + entity1.width > entity2.x &&
+                    entity1.y < entity2.y + entity2.height &&
+                    entity1.y + entity1.height > entity2.y
+                );
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const game = new Game('gameCanvas');
+        });
+        /* --- End JavaScript: js/game.js --- */
+    </script>
+
 </body>
 </html>
-
-/* styles.css */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Arial', sans-serif;
-    background-color: #000;
-    color: #fff;
-    overflow: hidden;
-}
-
-#game-container {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-}
-
-#game-canvas {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-#hud {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    right: 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px;
-    pointer-events: none;
-}
-
-#health-bar {
-    width: 200px;
-    height: 20px;
-    background-color: rgba(0, 0, 0, 0.5);
-    border: 2px solid #fff;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-#health-fill {
-    width: 100%;
-    height: 100%;
-    background-color: #f00;
-    transition: width 0.3s ease;
-}
-
-#ammo-counter {
-    font-size: 24px;
-    font-weight: bold;
-    color: #fff;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-}
-
-#weapon-name {
-    font-size: 18px;
-    color: #fff;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-}
-
-#score {
-    font-size: 24px;
-    font-weight: bold;
-    color: #fff;
-    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
-}
-
-#crosshair {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    font-size: 24px;
-    color: rgba(255, 255, 255, 0.8);
-    pointer-events: none;
-}
-
-#menu, #game-over {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    background-color: rgba(0, 0, 0, 0.8);
-    z-index: 10;
-}
-
-.hidden {
-    display: none !important;
-}
-
-h1 {
-    font-size: 48px;
-    margin-bottom: 20px;
-    color: #f00;
-    text-shadow: 0 0 10px rgba(255, 0, 0, 0.5);
-}
-
-h2 {
-    font-size: 24px;
-    margin-bottom: 10px;
-}
-
-button {
-    padding: 15px 30px;
-    font-size: 18px;
-    background-color: #f00;
-    color: #fff;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    margin: 10px 0;
-    transition: all 0.2s ease;
-}
-
-button:hover {
-    background-color: #ff3333;
-    transform: scale(1.05);
-}
-
-#weapon-selection {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 20px 0;
-    width: 80%;
-    max-width: 600px;
-}
-
-.weapon-option {
-    width: 100%;
-    padding: 10px;
-    margin: 5px 0;
-    background-color: rgba(50, 50, 50, 0.5);
-    border: 2px solid transparent;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.weapon-option:hover {
-    background-color: rgba(70, 70, 70, 0.7);
-}
-
-.weapon-option.selected {
-    border-color: #f00;
-    background-color: rgba(100, 50, 50, 0.5);
-}
-
-#difficulty {
-    margin: 20px 0;
-}
-
-select {
-    padding: 10px;
-    font-size: 16px;
-    background-color: #333;
-    color: #fff;
-    border: 1px solid #555;
-    border-radius: 5px;
-}
-
-/* Pickup animations */
-.pickup-notification {
-    position: absolute;
-    top: 100px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.7);
-    color: #fff;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-size: 18px;
-    animation: fadeUp 2s forwards;
-}
-
-@keyframes fadeUp {
-    0% {
-        opacity: 0;
-        transform: translate(-50%, 20px);
-    }
-    20% {
-        opacity: 1;
-        transform: translate(-50%, 0);
-    }
-    80% {
-        opacity: 1;
-        transform: translate(-50%, 0);
-    }
-    100% {
-        opacity: 0;
-        transform: translate(-50%, -20px);
-    }
-}
-
-/* Damage indicator */
-.damage-indicator {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(255, 0, 0, 0.3);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s ease;
-}
-
-.damage-indicator.active {
-    opacity: 1;
-}
-
-/* js/utils.js */
-/**
- * Utility functions for the game
- */
-const Utils = {
-    /**
-     * Generate a random number between min and max (inclusive)
-     */
-    randomRange: (min, max) => {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    },
-    
-    /**
-     * Generate a random position within a room
-     */
-    randomPositionInRoom: (room) => {
-        const padding = 1; // Padding from walls
-        return new THREE.Vector3(
-            Utils.randomRange(room.position.x - room.width / 2 + padding, room.position.x + room.width / 2 - padding),
-            0,
-            Utils.randomRange(room.position.z - room.depth / 2 + padding, room.position.z + room.depth / 2 - padding)
-        );
-    },
-    
-    /**
-     * Calculate distance between two Vector3 points
-     */
-    distance: (point1, point2) => {
-        return point1.distanceTo(point2);
-    },
-    
-    /**
-     * Check if two objects collide (simple box collision)
-     */
-    checkCollision: (obj1, obj2, threshold = 1) => {
-        const distance = Utils.distance(obj1.position, obj2.position);
-        return distance < threshold;
-    },
-    
-    /**
-     * Create a text notification that fades up
-     */
-    createNotification: (text, duration = 2000) => {
-        const notification = document.createElement('div');
-        notification.className = 'pickup-notification';
-        notification.textContent = text;
-        document.getElementById('game-container').appendChild(notification);
-        
-        setTimeout(() => {
-            notification.remove();
-        }, duration);
-    },
-    
-    /**
-     * Show damage indicator effect
-     */
-    showDamageIndicator: () => {
-        const damageIndicator = document.createElement('div');
-        damageIndicator.className = 'damage-indicator active';
-        document.getElementById('game-container').appendChild(damageIndicator);
-        
-        setTimeout(() => {
-            damageIndicator.classList.remove('active');
-            setTimeout(() => {
-                damageIndicator.remove();
-            }, 300);
-        }, 200);
-    }
-};
-
-/* js/config.js */
-/**
- * Game configuration constants
- */
-const Config = {
-    // Player settings
-    player: {
-        height: 1.8,
-        moveSpeed: 5,
-        sprintSpeed: 8,
-        jumpForce: 7,
-        gravity: 20,
-        health: 100,
-        damageRecoveryTime: 500
-    },
-    
-    // Weapon settings
-    weapons: {
-        assaultRifle: {
-            name: "Assault Rifle",
-            damage: 20,
-            fireRate: 0.1, // seconds between shots
-            ammoPerClip: 30,
-            maxAmmo: 90,
-            reloadTime: 2.0,
-            spread: 0.03,
-            recoil: 0.05,
-            automatic: true,
-            bulletSpeed: 50,
-            bulletLifetime: 1000,
-            model: {
-                // Three.js model parameters would go here
-                color: 0x555555,
-                length: 1.0,
-                width: 0.1,
-                height: 0.2
-            },
-            sound: {
-                fire: "sound/assault_fire.mp3",
-                reload: "sound/assault_reload.mp3",
-                empty: "sound/gun_empty.mp3"
-            }
-        },
-        shotgun: {
-            name: "Shotgun",
-            damage: 15, // per pellet
-            fireRate: 0.8,
-            ammoPerClip: 6,
-            maxAmmo: 24,
-            reloadTime: 2.5,
-            pellets: 8,
-            spread: 0.08,
-            recoil: 0.2,
-            automatic: false,
-            bulletSpeed: 40,
-            bulletLifetime: 800,
-            model: {
-                color: 0x8B4513,
-                length: 0.8,
-                width: 0.15,
-                height: 0.25
-            },
-            sound: {
-                fire: "sound/shotgun_fire.mp3",
-                reload: "sound/shotgun_reload.mp3",
-                empty: "sound/gun_empty.mp3"
-            }
-        },
-        smg: {
-            name: "SMG",
-            damage: 10,
-            fireRate: 0.06,
-            ammoPerClip: 40,
-            maxAmmo: 120,
-            reloadTime: 1.5,
-            spread: 0.05,
-            recoil: 0.03,
-            automatic: true,
-            bulletSpeed: 45,
-            bulletLifetime: 900,
-            model: {
-                color: 0x333333,
-                length: 0.6,
-                width: 0.1,
-                height: 0.15
-            },
-            sound: {
-                fire: "sound/smg_fire.mp3",
-                reload: "sound/smg_reload.mp3",
-                empty: "sound/gun_empty.mp3"
-            }
-        },
-        pistol: {
-            name: "Pistol",
-            damage: 15,
-            fireRate: 0.3,
-            ammoPerClip: 12,
-            maxAmmo: 60,
-            reloadTime: 1.2,
-            spread: 0.02,
-            recoil: 0.04,
-            automatic: false,
-            bulletSpeed: 40,
-            bulletLifetime: 800,
-            model: {
-                color: 0x222222,
-                length: 0.3,
-                width: 0.08,
-                height: 0.15
-            },
-            sound: {
-                fire: "sound/pistol_fire.mp3",
-                reload: "sound/pistol_reload.mp3",
-                empty: "sound/gun_empty.mp3"
-            }
-        },
-        sniperRifle: {
-            name: "Sniper Rifle",
-            damage: 80,
-            fireRate: 1.2,
-            ammoPerClip: 5,
-            maxAmmo: 15,
-            reloadTime: 2.5,
-            spread: 0.005,
-            recoil: 0.3,
-            automatic: false,
-            bulletSpeed: 70,
-            bulletLifetime: 1500,
-            model: {
-                color: 0x444444,
-                length: 1.2,
-                width: 0.1,
-                height: 0.2
-            },
-            sound: {
-                fire: "sound/sniper_fire.mp3",
-                reload: "sound/sniper_reload.mp3",
-                empty: "sound/gun_empty.mp3"
-            }
-        }
-    },
-    
-    // Enemy settings
-    enemies: {
-        basic: {
-            health: 50,
-            damage: 10,
-            speed: 3,
-            attackRate: 1,
-            detectRange: 15,
-            score: 100,
-            color: 0xFF0000
-        },
-        fast: {
-            health: 30,
-            damage: 8,
-            speed: 5,
-            attackRate: 0.7,
-            detectRange: 12,
-            score: 150,
-            color: 0xFFAA00
-        },
-        heavy: {
-            health: 120,
-            damage: 15,
-            speed: 1.5,
-            attackRate: 2,
-            detectRange: 10,
-            score: 200,
-            color: 0x880000
-        },
-        boss: {
-            health: 500,
-            damage: 25,
-            speed: 2,
-            attackRate: 1.5,
-            detectRange: 20,
-            score: 1000,
-            color: 0x330000,
-            scale: 2
-        }
-    },
-    
-    // Procedural generation settings
-    generation: {
-        roomMinSize: 6,
-        roomMaxSize: 15,
-        roomsPerLevel: {
-            easy: { min: 5, max: 8 },
-            normal: { min: 8, max: 12 },
-            hard: { min: 10, max: 15 }
-        },
-        corridorWidth: 2,
-        enemiesPerRoom: {
-            easy: { min: 1, max: 3 },
-            normal: { min: 2, max: 5 },
-            hard: { min: 3, max: 7 }
-        },
-        bossFrequency: {
-            easy: 0.1,
-            normal: 0.2,
-            hard: 0.3
-        },
-        pickupFrequency: {
-            easy: 0.7,
-            normal: 0.5,
-            hard: 0.3
-        }
-    },
-    
-    // Pickup settings
-    pickups: {
-        health: {
-            amount: 25,
-            color: 0x00FF00
-        },
-        armor: {
-            amount: 25,
-            color: 0x0000FF
-        },
-        ammo: {
-            amount: 30,
-            color: 0xFFFF00
-        }
-    }
-};
-
-/* js/input.js */
-/**
- * Handles user input for the game
- */
-class InputHandler {
-    constructor(game) {
-        this.game = game;
-        this.keys = {};
-        this.mouse = {
-            x: 0,
-            y: 0,
-            isDragging: false
-        };
-        this.mouseSensitivity = 0.002;
-        this.setupEventListeners();
-    }
-    
-    setupEventListeners() {
-        // Keyboard events
-        document.addEventListener('keydown', this.handleKeyDown.bind(this));
-        document.addEventListener('keyup', this.handleKeyUp.bind(this));
-        
-        // Mouse events
-        document.addEventListener('mousemove', this.handleMouseMove.bind(this));
-        document.addEventListener('mousedown', this.handleMouseDown.bind(this));
-        document.addEventListener('mouseup', this.handleMouseUp.bind(this));
-        
-        // Pointer lock for FPS camera control
-        const canvas = document.getElementById('game-canvas');
-        canvas.addEventListener('click', () => {
-            if (this.game.isRunning && !this.game.isPaused) {
-                canvas.requestPointerLock = canvas.requestPointerLock || 
-                                           canvas.mozRequestPointerLock || 
-                                           canvas.webkitRequestPointerLock;
-                canvas.requestPointerLock();
-            }
-        });
-        
-        // Handle pointer lock change
-        document.addEventListener('pointerlockchange', this.handleLockChange.bind(this));
-        document.addEventListener('mozpointerlockchange', this.handleLockChange.bind(this));
-        document.addEventListener('webkitpointerlockchange', this.handleLockChange.bind(this));
-    }
-    
-    handleKeyDown(event) {
-        this.keys[event.code] = true;
-        
-        // Handle weapon switching with number keys
-        if (event.code.startsWith('Digit') && this.game.isRunning && !this.game.isPaused) {
-            const weaponIndex = parseInt(event.code.replace('Digit', '')) - 1;
-            if (weaponIndex >= 0 && weaponIndex < this.game.player.weapons.length) {
-                this.game.player.switchWeapon(weaponIndex);
-            }
-        }
-        
-        // Pause game with Escape
-        if (event.code === 'Escape' && this.game.isRunning) {
-            this.game.togglePause();
-        }
-    }
-    
-    handleKeyUp(event) {
-        this.keys[event.code] = false;
-    }
-    
-    handleMouseMove(event) {
-        if (this.mouse.isDragging && this.game.isRunning && !this.game.isPaused) {
-            const movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
-            const movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
-            
-            this.game.player.rotateCamera(
-                -movementY * this.mouseSensitivity,
-                -movementX * this.mouseSensitivity
-            );
-        }
-    }
-    
-    handleMouseDown(event) {
-        if (this.game.isRunning && !this.game.isPaused) {
-            if (event.button === 0) { // Left click
-                this.mouse.isDragging = true;
-                this.game.player.startFiring();
-            }
-        }
-    }
-    
-    handleMouseUp(event) {
-        if (event.button === 0) { // Left click
-            this.mouse.isDragging = false;
-            this.game.player.stopFiring();
-        }
-    }
-    
-    handleLockChange() {
-        if (document.pointerLockElement === document.getElementById('game-canvas') ||
-            document.mozPointerLockElement === document.getElementById('game-canvas') ||
-            document.webkitPointerLockElement === document.getElementById('game-canvas')) {
-            this.mouse.isDragging = true;
-        } else {
-            this.mouse.isDragging = false;
-            if (this.game.isRunning && !this.game.isPaused) {
-                this.game.togglePause();
-            }
-        }
-    }
-    
-    isKeyPressed(keyCode) {
-        return this.keys[keyCode] === true;
-    }
-    
-    getMovementDirection() {
-        const direction = new THREE.Vector3(0, 0, 0);
-        
-        if (this.isKeyPressed('KeyW')) direction.z -= 1;
-        if (this.isKeyPressed('KeyS')) direction.z += 1;
-        if (this.isKeyPressed('KeyA')) direction.x -= 1;
-        if (this.isKeyPressed('KeyD')) direction.x += 1;
-        
-        // Normalize if moving diagonally
-        if (direction.length() > 0) {
-            direction.normalize();
-        }
-        
-        return direction;
-    }
-    
-    isJumping() {
-        return this.isKeyPressed('Space');
-    }
-    
-    isSprinting() {
-        return this.isKeyPressed('ShiftLeft');
-    }
-    
-    isReloading() {
-        return this.isKeyPressed('KeyR');
-    }
-}
-
-/* js/weapons.js */
-/**
- * Weapon system following SOLID principles
- */
-
-// Base Weapon class (Abstract)
-class Weapon {
-    constructor(config) {
-        this.name = config.name;
-        this.damage = config.damage;
-        this.fireRate = config.fireRate;
-        this.ammoPerClip = config.ammoPerClip;
-        this.maxAmmo = config.maxAmmo;
-        this.reloadTime = config.reloadTime;
-        this.spread = config.spread;
-        this.recoil = config.recoil;
-        this.automatic = config.automatic;
-        this.bulletSpeed = config.bulletSpeed;
-        this.bulletLifetime = config.bulletLifetime;
-        this.modelConfig = config.model;
-        this.soundConfig = config.sound;
-        
-        // State variables
-        this.currentAmmo = this.ammoPerClip;
-        this.reserveAmmo = this.maxAmmo;
-        this.isReloading = false;
-        this.lastFired = 0;
-        this.isFiring = false;
-        
-        // Reference to game objects
-        this.player = null;
-        this.scene = null;
-        this.camera = null;
-        
-        // Bullet pool
-        this.bullets = [];
-        
-        // Model
-        this.model = null;
-    }
-    
-    // Initialize weapon with references
-    init(player, scene, camera) {
-        this.player = player;
-        this.scene = scene;
-        this.camera = camera;
-        this.createModel();
-    }
-    
-    // Create weapon model
-    createModel() {
-        // Create a simple representation of the weapon
-        const geometry = new THREE.BoxGeometry(
-            this.modelConfig.length, 
-            this.modelConfig.height, 
-            this.modelConfig.width
-        );
-        const material = new THREE.MeshStandardMaterial({ color: this.modelConfig.color });
-        this.model = new THREE.Mesh(geometry, material);
-        
-        // Position the weapon relative to the camera
-        this.model.position.set(0.3, -0.2, -0.5);
-        this.camera.add(this.model);
-    }
-    
-    // Handle firing logic
-    startFiring() {
-        this.isFiring = true;
-        this.tryToFire();
-    }
-    
-    stopFiring() {
-        this.isFiring = false;
-    }
-    
-    tryToFire() {
-        if (!this.isFiring) return;
-        
-        const now = performance.now();
-        if (now - this.lastFired < this.fireRate * 1000) {
-            // Not enough time has passed since last shot
-            requestAnimationFrame(this.tryToFire.bind(this));
-            return;
-        }
-        
-        if (this.isReloading) {
-            // Can't fire while reloading
-            if (this.automatic) {
-                requestAnimationFrame(this.tryToFire.bind(this));
-            }
-            return;
-        }
-        
-        if (this.currentAmmo <= 0) {
-            // Out of ammo
-            this.playSound('empty');
-            this.reload();
-            if (this.automatic) {
-                requestAnimationFrame(this.tryToFire.bind(this));
-            }
-            return;
-        }
-        
-        // Fire the weapon
-        this.fire();
-        this.lastFired = now;
-        
-        // If automatic, queue up next shot
-        if (this.automatic) {
-            requestAnimationFrame(this.tryToFire.bind(this));
-        }
-    }
-    
-    fire() {
-        // Decrease ammo
-        this.currentAmmo--;
-        
-        // Play sound
-        this.playSound('fire');
-        
-        // Apply recoil
-        this.applyRecoil();
-        
-        // Create bullet(s)
-        this.createBullets();
-        
-        // Update UI
-        this.updateAmmoUI();
-    }
-    
-    createBullets() {
-        // Default implementation creates a single bullet
-        this.createBullet();
-    }
-    
-    createBullet() {
-        // Get direction from camera with spread
-        const spreadX = (Math.random() - 0.5) * this.spread;
-        const spreadY = (Math.random() - 0.5) * this.spread;
-        
-        // Create direction vector from camera
-        const direction = new THREE.Vector3();
-        this.camera.getWorldDirection(direction);
-        
-        // Apply spread
-        direction.x += spreadX;
-        direction.y += spreadY;
-        direction.normalize();
-        
-        // Create bullet
-        const bullet = {
-            position: new THREE.Vector3().copy(this.camera.position),
-            direction: direction,
-            speed: this.bulletSpeed,
-            damage: this.damage,
-            lifetime: this.bulletLifetime,
-            timeCreated: performance.now(),
-            mesh: this.createBulletMesh()
-        };
-        
-        // Add to scene
-        this.scene.add(bullet.mesh);
-        
-        // Add to bullets array
-        this.bullets.push(bullet);
-    }
-    
-    createBulletMesh() {
-        // Simple bullet representation
-        const geometry = new THREE.SphereGeometry(0.05);
-        const material = new THREE.MeshBasicMaterial({ color: 0xFFFF00 });
-        const mesh = new THREE.Mesh(geometry, material);
-        mesh.position.copy(this.camera.position);
-        return mesh;
-    }
-    
-    applyRecoil() {
-        // Apply camera recoil
-        this.camera.rotation.x -= this.recoil * Math.random();
-        this.camera.rotation.y += (Math.random() - 0.5) * this.recoil * 0.5;
-    }
-    
-    reload() {
-        if (this.isReloading || this.currentAmmo === this.ammoPerClip || this.reserveAmmo <= 0) return;
-        
-        this.isReloading = true;
-        this.playSound('reload');
-        
-        // Start reload animation
-        this.model.rotation.x = -Math.PI / 6;
-        
-        setTimeout(() => {
-            // Calculate ammo to reload
-            const ammoNeeded = this.ammoPerClip - this.currentAmmo;
-            const ammoToReload = Math.min(ammoNeeded, this.reserveAmmo);
-            
-            this.currentAmmo += ammoToReload;
-            this.reserveAmmo -= ammoToReload;
-            
-            this.isReloading = false;
-            
-            // Reset weapon position
-            this.model.rotation.x = 0;
-            
-            // Update UI
-            this.updateAmmoUI();
-        }, this.reloadTime * 1000);
-    }
-    
-    addAmmo(amount) {
-        this.reserveAmmo = Math.min(this.reserveAmmo + amount, this.maxAmmo);
-        this.updateAmmoUI();
-    }
-    
-    updateAmmoUI() {
-        document.getElementById('ammo-counter').textContent = `${this.currentAmmo} / ${this.reserveAmmo}`;
-        document.getElementById('weapon-name').textContent = this.name;
-    }
-    
-    playSound(type) {
-        // In a full implementation, this would play actual sounds
-        console.log(`Playing ${this.name} ${type} sound: ${this.soundConfig[type]}`);
-    }
-    
-    update(deltaTime) {
-        // Update bullets
-        this.updateBullets(deltaTime);
-        
-        // Check for manual reload
-        if (this.player.input.isReloading() && !this.isReloading && this.currentAmmo < this.ammoPerClip && this.reserveAmmo > 0) {
-            this.reload();
-        }
-    }
-    
-    updateBullets(deltaTime) {
-        const now = performance.now();
-        
-        // Update bullet positions and check for collisions
-        for (let i = this.bullets.length - 1; i >= 0; i--) {
-            const bullet = this.bullets[i];
-            
-            // Move bullet
-            const moveAmount = bullet.speed * deltaTime;
-            bullet.position.add(bullet.direction.clone().multiplyScalar(moveAmount));
-            bullet.mesh.position
