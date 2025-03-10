@@ -1,768 +1,872 @@
+--- START OF GIANT CODE BLOCK ---
+<!-- index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Galactic Guardians - Pixel Panic (Multiplayer Chat)</title>
-    <style>
-        /* --- CSS Styles --- */
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #000;
-            font-family: 'Press Start 2P', cursive;
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-
-        #game-container {
-            position: relative;
-            border: 5px solid #ddd;
-            background-color: #111;
-        }
-
-        #gameCanvas {
-            background-color: #000;
-            display: block;
-        }
-
-        #ui-overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-
-        #top-ui { /* Container for top UI elements (score, lives, instructions) */
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            padding: 10px;
-            pointer-events: none; /* Make sure clicks pass through to canvas if needed below this area */
-        }
-
-        #score, #lives {
-            font-size: 16px;
-            text-shadow: 2px 2px 0 #000;
-            pointer-events: auto; /* Re-enable pointer events for score/lives text if needed */
-        }
-
-        #instructions-button {
-            font-size: 14px;
-            padding: 8px 12px;
-            pointer-events: auto; /* Re-enable pointer events for button */
-        }
-        #lives {
-            text-align: right;
-        }
-
-
-        #chat-container { /* Chat Container */
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 300px; /* Adjust width as needed */
-            height: 200px; /* Adjust height as needed */
-            background-color: rgba(0, 0, 0, 0.7); /* Semi-transparent chat background */
-            border-top-right-radius: 10px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-            pointer-events: auto; /* Ensure chat elements are interactive */
-        }
-
-        #chat-messages { /* Chat Message Display Area */
-            flex-grow: 1;
-            overflow-y: auto; /* Scrollable chat messages */
-            padding-bottom: 5px;
-            font-size: 14px;
-            line-height: 1.4;
-            word-break: break-word; /* Prevent long words from breaking layout */
-        }
-
-        #chat-input-container { /* Container for Input Area */
-            display: flex;
-            align-items: center;
-            border-top: 1px solid #666;
-            padding-top: 5px;
-        }
-
-        #chat-input { /* Chat Input Field */
-            flex-grow: 1;
-            background-color: transparent;
-            border: none;
-            color: #fff;
-            font-family: inherit;
-            font-size: 14px;
-            padding: 5px;
-            margin-right: 5px;
-        }
-        #chat-input:focus {
-            outline: none; /* Remove default focus outline */
-        }
-
-
-        #instructions-popup {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.9);
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
-            text-align: left;
-            width: 60%;
-            max-height: 80%;
-            overflow-y: auto;
-            z-index: 100;
-        }
-
-        #instructions-popup h2 {
-            font-size: 24px;
-            margin-top: 0;
-            margin-bottom: 20px;
-        }
-
-        #instructions-popup p {
-            font-size: 16px;
-            line-height: 1.6;
-            margin-bottom: 15px;
-        }
-
-        #instructions-popup ul {
-            padding-left: 25px;
-            margin-bottom: 15px;
-        }
-
-        #instructions-popup li {
-            font-size: 16px;
-            line-height: 1.6;
-        }
-
-        #close-instructions {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: none;
-            border: none;
-            color: #fff;
-            font-size: 20px;
-            cursor: pointer;
-            opacity: 0.7;
-            transition: opacity 0.3s;
-        }
-
-        #close-instructions:hover {
-            opacity: 1;
-        }
-
-
-        #game-over, #start-screen {
-            text-align: center;
-            background-color: rgba(0, 0, 0, 0.8);
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
-        }
-
-        #game-over h1, #start-screen h1 {
-            font-size: 32px;
-            margin-bottom: 10px;
-        }
-
-        #game-over p, #start-screen p {
-            font-size: 18px;
-            margin-bottom: 20px;
-        }
-
-        button, #instructions-button, #close-instructions {
-            font-family: 'Press Start 2P', cursive;
-            font-size: 16px;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-
-        button:hover, #instructions-button:hover {
-            background-color: #45a049;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-    </style>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <title>Weapon Masters Online</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="game-container">
         <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div id="ui-overlay">
-            <div id="top-ui">
-                <div id="score">Score: 0</div>
-                <div id="lives">Lives: 3</div>
-                <button id="instructions-button">Instructions</button>
+        <div id="ui-container">
+            <div id="chat-box">
+                <h2>Chat</h2>
+                <ul id="messages"></ul>
+                <input type="text" id="chat-input" placeholder="Enter message...">
             </div>
-            <div id="chat-container">  <!-- Chat Container Added -->
-                <div id="chat-messages"></div>
-                <div id="chat-input-container">
-                    <input type="text" id="chat-input" placeholder="Type message and press Enter">
+            <div id="inventory-box">
+                <h2>Inventory</h2>
+                <ul id="inventory-items"></ul>
+                <h3>Equipped Item: <span id="equipped-item-display">None</span></h3>
+                <button id="equip-item-btn" style="display:none;">Equip Selected</button>
+            </div>
+            <div id="player-stats">
+                <h2>Stats</h2>
+                <p>Name: <span id="player-name-display"></span></p>
+                <p>Health: <span id="player-health-display"></span></p>
+                <p>Copper: <span id="player-copper-display"></span></p>
+            </div>
+            <div id="trade-ui" style="display:none;">
+                <h2>Trade with <span id="trade-player-name"></span></h2>
+                <div id="trade-offer">
+                    <h3>Your Offer</h3>
+                    <select id="offer-item-select">
+                        <option value="-1">No Item</option>
+                    </select>
+                    <input type="number" id="offer-copper-input" value="0" min="0"> Copper
+                </div>
+                <div id="trade-request-display" style="display:none;">
+                    <h3>Trade Request from <span id="trade-request-sender"></span></h3>
+                    <p>Offering Item: <span id="trade-request-item">None</span></p>
+                    <p>Offering Copper: <span id="trade-request-copper">0</span></p>
+                    <button id="accept-trade-btn">Accept</button>
+                    <button id="decline-trade-btn">Decline</button>
+                </div>
+                <div id="trade-actions">
+                    <button id="request-trade-btn">Request Trade</button>
+                    <button id="cancel-trade-btn" style="display:none;">Cancel Trade</button>
                 </div>
             </div>
-            <div id="instructions-popup" class="hidden">
-                <h2>Galactic Guardians: Pixel Panic - Instructions</h2>
-                <p>Welcome, Guardian! Earth is under attack from pixelated invaders! Your mission is to defend our planet and achieve the highest score possible.</p>
-
-                <h3>Goal:</h3>
-                <p>Survive waves of increasingly challenging enemies and defeat the Pixel Panic!</p>
-
-                <h3>How to Play:</h3>
-                <ul>
-                    <li><strong>Move Left:</strong> Press the <strong>Left Arrow</strong> key or <strong>'A'</strong> key.</li>
-                    <li><strong>Move Right:</strong> Press the <strong>Right Arrow</strong> key or <strong>'D'</strong> key.</li>
-                    <li><strong>Shoot:</strong> Press the <strong>Spacebar</strong>.</li>
-                </ul>
-
-                <h3>Game Elements:</h3>
-                <ul>
-                    <li><strong>Enemies:</strong> Destroy red pixel enemies to earn points. Some enemies shoot back!</li>
-                    <li><strong>Power-Ups:</strong> Collect cyan power-ups to gain temporary advantages:
-                        <ul>
-                            <li><strong>'F' (Fast Shoot):</strong> Increases your firing rate.</li>
-                            <li><strong>'S' (Shield):</strong> Makes you temporarily invincible.</li>
-                            <li><strong>'M' (Multi-Shot):</strong> Allows you to shoot multiple projectiles at once.</li>
-                        </ul>
-                    </li>
-                    <li><strong>Lives:</strong> You start with 3 lives. Lose a life when hit by an enemy projectile. Game Over when you run out of lives!</li>
-                </ul>
-
-                <h3>Scoring:</h3>
-                <ul>
-                    <li><strong>Enemy Destroyed:</strong> 100 points</li>
-                </ul>
-
-                <p>Good luck, Guardian! Earth needs you!</p>
-                <button id="close-instructions">Close</button>
-            </div>
-            <div id="game-over" class="hidden">
-                <h1>Game Over</h1>
-                <p id="final-score">Your Final Score: 0</p>
-                <button id="restart-button">Restart</button>
-            </div>
-            <div id="start-screen">
-                <h1>Galactic Guardians: Pixel Panic</h1>
-                <h1>Multiplayer Chat Demo</h1> <p>(Simplified - Requires separate server setup)</p>
-                <p>Defend Earth from the Pixel Invaders!</p>
-                <button id="start-game-button">Start Game</button>
+            <div id="players-online">
+                <h2>Players Online</h2>
+                <ul id="player-list"></ul>
             </div>
         </div>
     </div>
-    <script>
-        /* --- JavaScript Code --- */
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreDisplay = document.getElementById('score');
-        const livesDisplay = document.getElementById('lives');
-        const gameOverScreen = document.getElementById('game-over');
-        const finalScoreDisplay = document.getElementById('final-score');
-        const restartButton = document.getElementById('restart-button');
-        const startScreen = document.getElementById('start-screen');
-        const startGameButton = document.getElementById('start-game-button');
-        const instructionsButton = document.getElementById('instructions-button');
-        const instructionsPopup = document.getElementById('instructions-popup');
-        const closeInstructionsButton = document.getElementById('close-instructions');
-        const chatMessagesDiv = document.getElementById('chat-messages'); // Chat message display
-        const chatInput = document.getElementById('chat-input');         // Chat input field
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
+<!-- style.css -->
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    background-color: #f0f0f0;
+    overflow: hidden; /* Prevent scrollbars */
+}
 
-        // --- Multiplayer ---
-        let username = generateUsername(); // Generate AI username
-        let websocket; // WebSocket connection variable
+#game-container {
+    display: flex;
+    width: 100vw;
+    height: 100vh;
+}
 
-        function generateUsername() { // Simple AI Username Generator
-            const adjectives = ["Pixelated", "Galactic", "Cosmic", "Neon", "Retro", "Space", "Star", "Cyber", "Quantum", "Atomic"];
-            const nouns = ["Guardian", "Defender", "Invader", "Fighter", "Pilot", "Ranger", "Knight", "Warrior", "Soldier", "Captain"];
-            const randomAdj = adjectives[Math.floor(Math.random() * adjectives.length)];
-            const randomNoun = nouns[Math.floor(Math.random() * nouns.length)];
-            return randomAdj + randomNoun;
+#gameCanvas {
+    background-color: #333; /* Dark background for the game world */
+    border: 1px solid black;
+}
+
+#ui-container {
+    width: 300px; /* Adjust as needed */
+    background-color: #ddd;
+    padding: 20px;
+    box-sizing: border-box;
+    overflow-y: auto; /* Scrollable UI if content overflows */
+}
+
+#chat-box {
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    background-color: white;
+    height: 200px; /* Fixed height for chat box */
+    overflow-y: auto; /* Scrollable chat messages */
+}
+
+#chat-box h2 {
+    margin-top: 0;
+}
+
+#messages {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#messages li {
+    margin-bottom: 5px;
+}
+
+#chat-input {
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 10px;
+}
+
+#inventory-box, #player-stats, #trade-ui, #players-online {
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 20px;
+    background-color: white;
+}
+
+#inventory-box h2, #player-stats h2, #trade-ui h2, #players-online h2 {
+    margin-top: 0;
+}
+
+#inventory-items {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#inventory-items li {
+    margin-bottom: 5px;
+    cursor: pointer; /* Indicate selectable items */
+}
+
+#inventory-items li.selected {
+    background-color: #eee; /* Highlight selected item */
+}
+
+
+#trade-offer, #trade-request-display {
+    margin-bottom: 10px;
+    padding: 10px;
+    border: 1px solid #eee;
+    background-color: #f9f9f9;
+}
+
+#trade-offer h3, #trade-request-display h3 {
+    margin-top: 0;
+}
+
+#trade-actions button, #trade-offer button, #trade-request-display button, #equip-item-btn {
+    margin-right: 5px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+#players-online h2 {
+    margin-top: 0;
+}
+
+#player-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+#player-list li {
+    margin-bottom: 5px;
+}
+</style>
+<!-- script.js -->
+<script>
+// script.js
+
+// ------------------------ Module: GameClient ------------------------ (SRP, DIP)
+const GameClient = (function() {
+    let socket;
+    let canvas;
+    let ctx;
+    let player; // Local player data
+    let players = {}; // All players in the game
+    let items = {};
+    let enemies = {};
+    let playerNameDisplay = document.getElementById('player-name-display');
+    let playerHealthDisplay = document.getElementById('player-health-display');
+    let playerCopperDisplay = document.getElementById('player-copper-display');
+    let inventoryItemsList = document.getElementById('inventory-items');
+    let equippedItemDisplay = document.getElementById('equipped-item-display');
+    let equipItemButton = document.getElementById('equip-item-btn');
+    let messagesList = document.getElementById('messages');
+    let chatInput = document.getElementById('chat-input');
+    let playerListElement = document.getElementById('player-list');
+
+    // Trade UI elements
+    let tradeUI = document.getElementById('trade-ui');
+    let tradePlayerNameDisplay = document.getElementById('trade-player-name');
+    let offerItemSelect = document.getElementById('offer-item-select');
+    let offerCopperInput = document.getElementById('offer-copper-input');
+    let requestTradeButton = document.getElementById('request-trade-btn');
+    let cancelTradeButton = document.getElementById('cancel-trade-btn');
+    let tradeRequestDisplay = document.getElementById('trade-request-display');
+    let tradeRequestSenderDisplay = document.getElementById('trade-request-sender');
+    let tradeRequestItemDisplay = document.getElementById('trade-request-item');
+    let tradeRequestCopperDisplay = document.getElementById('trade-request-copper');
+    let acceptTradeButton = document.getElementById('accept-trade-btn');
+    let declineTradeButton = document.getElementById('decline-trade-btn');
+
+    const TILE_SIZE = 64;
+    const DIRECTIONS = { DOWN: 0, LEFT: 1, RIGHT: 2, UP: 3, DOWN_LEFT: 4, DOWN_RIGHT: 5, UP_LEFT: 6, UP_RIGHT: 7 };
+
+    let assetsLoaded = false;
+    const playerSpriteSheet = new Image();
+    const enemySpriteSheet = new Image();
+    const itemImages = {
+        sword: new Image(),
+        shield: new Image(),
+        potion: new Image(),
+        staff: new Image()
+    };
+    const tileFloorImage = new Image();
+    const tileWallImage = new Image();
+    const tileDoorImage = new Image();
+
+    let gameWorld = []; // Client-side game world representation
+
+    let selectedInventoryIndex = -1; // Track selected inventory item for equipping
+
+
+    function init() {
+        canvas = document.getElementById('gameCanvas');
+        ctx = canvas.getContext('2d');
+
+        loadAssets();
+    }
+
+    function loadAssets() {
+        playerSpriteSheet.src = 'assets/player_spritesheet.png'; // Replace with your sprite sheet path
+        enemySpriteSheet.src = 'assets/enemy_spritesheet.png'; // Replace with your sprite sheet path
+        itemImages.sword.src = 'assets/sword.png'; // Replace with your item image paths
+        itemImages.shield.src = 'assets/shield.png';
+        itemImages.potion.src = 'assets/potion.png';
+        itemImages.staff.src = 'assets/staff.png';
+        tileFloorImage.src = 'assets/tile_floor.png'; // Replace with your tile image paths
+        tileWallImage.src = 'assets/tile_wall.png';
+        tileDoorImage.src = 'assets/tile_door.png';
+
+        let assetsToLoad = Object.keys(itemImages).length + 5; // Number of item images + player, enemy, and tiles
+
+        const assetLoaded = () => {
+            assetsToLoad--;
+            if (assetsToLoad === 0) {
+                assetsLoaded = true;
+                connectToServer();
+            }
+        };
+
+        playerSpriteSheet.onload = assetLoaded;
+        enemySpriteSheet.onload = assetLoaded;
+        tileFloorImage.onload = assetLoaded;
+        tileWallImage.onload = assetLoaded;
+        tileDoorImage.onload = assetLoaded;
+        for (const itemName in itemImages) {
+            itemImages[itemName].onload = assetLoaded;
         }
+    }
 
-        function connectWebSocket() { // Function to connect to WebSocket Server
-            // *** IMPORTANT: Replace with your actual WebSocket server address ***
-            const websocketServerAddress = 'ws://localhost:8080'; // Example - Change if your server is different!
 
-            websocket = new WebSocket(websocketServerAddress);
+    function connectToServer() {
+        socket = io();
 
-            websocket.onopen = () => {
-                console.log('WebSocket connection opened');
-                displayChatMessage('[System]', 'Connected to chat server!');
-                sendChatMessage('[System]', `${username} joined the chat.`); // Announce join
-            };
+        // --- Socket Event Handlers --- (OCP - Easily extendable with new event handlers)
 
-            websocket.onmessage = (event) => {
-                const messageData = JSON.parse(event.data); // Expecting JSON messages from server
-                displayChatMessage(messageData.sender, messageData.message);
-            };
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
 
-            websocket.onclose = () => {
-                console.log('WebSocket connection closed');
-                displayChatMessage('[System]', 'Disconnected from chat server.');
-            };
+        socket.on('currentPlayers', (playersData) => {
+            players = playersData;
+            player = players[socket.id]; // Set local player
+            updatePlayerUI(player);
+            render();
+        });
 
-            websocket.onerror = (error) => {
-                console.error('WebSocket error:', error);
-                displayChatMessage('[System]', 'Error connecting to chat server.');
-            };
-        }
+        socket.on('newPlayer', (playerData) => {
+            players[playerData.id] = playerData;
+            updatePlayerList();
+            render();
+        });
 
-        function sendChatMessage(sender, message) { // Function to send chat message
-            if (websocket && websocket.readyState === WebSocket.OPEN) {
-                const messagePayload = { sender: sender, message: message };
-                websocket.send(JSON.stringify(messagePayload)); // Send message as JSON
+        socket.on('playerMoved', (playerData) => {
+            if (players[playerData.playerId]) {
+                players[playerData.playerId] = playerData; // Update player position
+                render();
+            }
+        });
+
+        socket.on('playerDisconnected', (playerId) => {
+            delete players[playerId];
+            updatePlayerList();
+            render();
+        });
+
+        socket.on('currentItems', (itemsData) => {
+            items = itemsData;
+            renderItems();
+        });
+
+        socket.on('itemPickedUp', (data) => {
+            if (data.playerId === socket.id) {
+                player.inventory.push(data.item); // Update local player inventory
+                updateInventoryUI();
+            }
+            delete items[data.itemId]; // Remove item from world
+            renderItems();
+        });
+
+        socket.on('chatMessage', (data) => {
+            addChatMessage(data.playerId, data.message);
+        });
+
+        socket.on('playerDamaged', (data) => {
+            if (data.playerId === socket.id) {
+                player.health = data.health;
+                updatePlayerUI(player);
+            }
+            if (players[data.playerId]) {
+                players[data.playerId].health = data.health; // Update other player health
+            }
+            render(); // Re-render to show damage
+        });
+
+        socket.on('playerHealed', (data) => {
+            if (data.playerId === socket.id) {
+                player.health = data.health;
+                updatePlayerUI(player);
+            }
+            render();
+        });
+
+        socket.on('playerKilled', (playerId) => {
+            if (playerId === socket.id) {
+                alert("You have been defeated!"); // Basic game over
+                // Optionally respawn logic here
+            } else if (players[playerId]) {
+                delete players[playerId]; // Remove from client side players list
+                updatePlayerList();
+                render();
+            }
+        });
+
+        socket.on('updateEnemies', (enemiesData) => {
+            enemies = enemiesData;
+            renderEnemies();
+        });
+
+        socket.on('enemyKilled', (enemyId) => {
+            delete enemies[enemyId];
+            renderEnemies();
+        });
+
+        socket.on('enemyAttack', (data) => {
+            //Visual feedback for enemy attack (optional)
+            console.log(`Enemy ${data.enemyId} attacked!`);
+        });
+
+        socket.on('updateCopper', (copper) => {
+            player.copper = copper;
+            updatePlayerUI(player);
+        });
+
+        socket.on('tradeRequest', (data) => {
+            displayTradeRequest(data);
+        });
+
+        socket.on('tradeDeclined', (data) => {
+            hideTradeUI();
+            alert(`Trade declined by player ${data.recipientId}`);
+        });
+
+        socket.on('tradeSuccess', (data) => {
+            player.inventory = data.newInventory;
+            player.copper = data.copper;
+            updateInventoryUI();
+            updatePlayerUI(player);
+            hideTradeUI();
+            alert('Trade successful!');
+        });
+
+        socket.on('tradeError', (message) => {
+            alert(`Trade error: ${message}`);
+            hideTradeUI();
+        });
+
+        socket.on('privateMessage', (data) => {
+            addChatMessage(data.senderId, `(Private) ${data.message}`);
+        });
+
+        socket.on('privateMessageSent', (data) => {
+             addChatMessage(socket.id, `(Private to ${data.recipientId}) ${data.message}`);
+        });
+
+        socket.on('chatError', (message) => {
+            addChatMessage('Server', `Error: ${message}`);
+        });
+
+        // --- Input Handling ---
+        setupInputListeners();
+        setupChatInput();
+        setupTradeUIListeners();
+        setupInventoryUIListeners(); // Setup inventory UI interactions
+        updatePlayerList(); // Initial player list update
+        gameLoop(); // Start the game loop
+    }
+
+    function updatePlayerList() {
+        playerListElement.innerHTML = ''; // Clear the list
+        Object.values(players).forEach(p => {
+            const li = document.createElement('li');
+            li.textContent = `${p.name} (${p.id === socket.id ? 'You' : p.name})`;
+            if (p.id !== socket.id) {
+                const tradeButton = document.createElement('button');
+                tradeButton.textContent = 'Trade';
+                tradeButton.onclick = () => initiateTrade(p.id, p.name);
+                li.appendChild(tradeButton);
+            }
+            playerListElement.appendChild(li);
+        });
+    }
+
+
+    function setupInputListeners() {
+        let keysPressed = {};
+        document.addEventListener('keydown', (event) => {
+            keysPressed[event.key] = true;
+        });
+
+        document.addEventListener('keyup', (event) => {
+            keysPressed[event.key] = false;
+        });
+
+        setInterval(() => {
+            if (!player || !assetsLoaded) return;
+            let moving = false;
+            let dx = 0;
+            let dy = 0;
+            let direction = player.direction;
+            let frameIndex = player.frameIndex;
+
+            if (keysPressed['w'] || keysPressed['ArrowUp']) {
+                dy -= 1;
+                direction = DIRECTIONS.UP;
+                moving = true;
+            }
+            if (keysPressed['s'] || keysPressed['ArrowDown']) {
+                dy += 1;
+                direction = DIRECTIONS.DOWN;
+                moving = true;
+            }
+            if (keysPressed['a'] || keysPressed['ArrowLeft']) {
+                dx -= 1;
+                direction = DIRECTIONS.LEFT;
+                moving = true;
+            }
+            if (keysPressed['d'] || keysPressed['ArrowRight']) {
+                dx += 1;
+                direction = DIRECTIONS.RIGHT;
+                moving = true;
+            }
+
+            if (moving) {
+                frameIndex = (frameIndex + 1) % 8; // Cycle through frames
             } else {
-                console.log('WebSocket not connected, cannot send message.');
-                displayChatMessage('[System]', 'Cannot send message: Not connected to chat.');
-            }
-        }
-
-        function displayChatMessage(sender, message) { // Function to display chat message in UI
-            const messageElement = document.createElement('div');
-            messageElement.textContent = `${sender}: ${message}`;
-            chatMessagesDiv.appendChild(messageElement);
-            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight; // Auto-scroll to bottom
-        }
-
-
-        // --- Game Variables --- (Rest of your game variables remain the same)
-        let score = 0;
-        let lives = 3;
-        let player;
-        let enemies = [];
-        let projectiles = [];
-        let enemyProjectiles = [];
-        let powerUps = [];
-        let gameRunning = false;
-        let level = 1;
-        let enemySpawnInterval = 150;
-        let powerUpSpawnInterval = 300;
-        let lastEnemySpawnTime = 0;
-        let lastPowerUpSpawnTime = 0;
-        let gameFrame = 0;
-
-
-        // --- Game Objects (Classes/Functions) --- (Rest of your game object classes remain the same - Player, Enemy, Projectile, PowerUp)
-        class Player {
-            constructor() {
-                this.x = canvas.width / 2;
-                this.y = canvas.height - 50;
-                this.width = 30;
-                this.height = 30;
-                this.speed = 5;
-                this.color = 'lime';
-                this.isInvincible = false;
-                this.invincibleTimer = 0;
-                this.shootInterval = 25;
-                this.lastShot = 0;
-                this.multiShotActive = false;
+                frameIndex = 0; // Reset to idle frame
             }
 
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
-                if (this.isInvincible && gameFrame % 10 < 5) {
-                    ctx.strokeStyle = 'yellow';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(this.x - this.width / 2 - 5, this.y - this.height / 2 - 5, this.width + 10, this.height + 10);
-                }
+            if (dx !== 0 || dy !== 0 || moving !== player.moving || direction !== player.direction || frameIndex !== player.frameIndex) {
+                const speed = 5;
+                player.x += dx * speed;
+                player.y += dy * speed;
+                player.direction = direction;
+                player.moving = moving;
+                player.frameIndex = frameIndex;
+
+                socket.emit('playerMovement', {
+                    x: player.x,
+                    y: player.y,
+                    direction: direction,
+                    frameIndex: frameIndex,
+                    moving: moving
+                });
             }
+        }, 1000 / 60); // 60 times per second input check
+    }
 
-            moveLeft() {
-                this.x -= this.speed;
-                if (this.x < this.width / 2) this.x = this.width / 2;
-            }
-
-            moveRight() {
-                this.x += this.speed;
-                if (this.x > canvas.width - this.width / 2) this.x = canvas.width - this.width / 2;
-            }
-
-            shoot() {
-                if (gameFrame - this.lastShot > this.shootInterval) {
-                    projectiles.push(new Projectile(this.x, this.y - this.height / 2, -5, 'white'));
-                    if (this.multiShotActive) {
-                        projectiles.push(new Projectile(this.x - 10, this.y - this.height / 2, -5, 'white'));
-                        projectiles.push(new Projectile(this.x + 10, this.y - this.height / 2, -5, 'white'));
-                    }
-                    this.lastShot = gameFrame;
-                    console.log("Player shot!");
-                }
-            }
-
-
-            takeDamage() {
-                if (!this.isInvincible) {
-                    lives--;
-                    livesDisplay.textContent = `Lives: ${lives}`;
-                    if (lives <= 0) {
-                        gameOver();
-                    } else {
-                        this.becomeInvincible();
-                    }
-                }
-            }
-
-            becomeInvincible() {
-                this.isInvincible = true;
-                this.invincibleTimer = 150;
-            }
-
-            updateInvincibility() {
-                if (this.isInvincible) {
-                    this.invincibleTimer--;
-                    if (this.invincibleTimer <= 0) {
-                        this.isInvincible = false;
-                    }
-                }
-            }
-        }
-
-
-        // Enemy Ship
-        class Enemy {
-            constructor(x, y, type) {
-                this.x = x;
-                this.y = y;
-                this.width = 25;
-                this.height = 25;
-                this.speedX = 1;
-                this.speedY = 0.5;
-                this.color = 'red';
-                this.type = type;
-                this.directionX = 1;
-                this.shootInterval = 100 + Math.random() * 200;
-                this.lastShotTime = 0;
-            }
-
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
-            }
-
-            update() {
-                this.x += this.speedX * this.directionX;
-                this.y += this.speedY;
-
-                if (this.x <= this.width / 2 || this.x >= canvas.width - this.width / 2) {
-                    this.directionX *= -1;
-                    this.y += 15;
-                }
-
-                if (this.type === 'shooter' && gameFrame - this.lastShotTime > this.shootInterval) {
-                    this.shoot();
-                    this.lastShotTime = gameFrame;
-                    this.shootInterval = 100 + Math.random() * 200;
-                }
-
-                if (this.y > canvas.height) {
-                    this.y = -50;
-                    this.x = Math.random() * canvas.width;
-                }
-            }
-
-            shoot() {
-                enemyProjectiles.push(new Projectile(this.x, this.y + this.height / 2, 3, 'orange'));
-            }
-        }
-
-
-        // Projectile (for both player and enemies)
-        class Projectile {
-            constructor(x, y, speedY, color) {
-                this.x = x;
-                this.y = y;
-                this.width = 5;
-                this.height = 10;
-                this.speedY = speedY;
-                this.color = color;
-            }
-
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
-            }
-
-            update() {
-                this.y += this.speedY;
-            }
-        }
-
-        // Power-Ups
-        class PowerUp {
-            constructor(x, y, type) {
-                this.x = x;
-                this.y = y;
-                this.width = 20;
-                this.height = 20;
-                this.type = type;
-                this.color = 'cyan';
-            }
-
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
-                ctx.fillStyle = 'black';
-                ctx.font = '12px Press Start 2P';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(this.getSymbol(), this.x, this.y);
-            }
-
-            getSymbol() {
-                switch (this.type) {
-                    case 'fastShoot': return 'F';
-                    case 'shield': return 'S';
-                    case 'multiShot': return 'M';
-                    default: return 'P';
-                }
-            }
-
-            update() {
-                this.y += 1;
-            }
-        }
-
-
-        // --- Game Functions --- (Rest of your game functions remain the same - spawnEnemy, spawnPowerUp, updateScore, checkCollisions, isCollision, gameOver, resetGame, gameLoop)
-        function spawnEnemy() {
-            if (gameFrame - lastEnemySpawnTime > enemySpawnInterval) {
-                const x = Math.random() * canvas.width;
-                const y = -50;
-                const enemyType = Math.random() < 0.8 ? 'basic' : 'shooter';
-                enemies.push(new Enemy(x, y, enemyType));
-                lastEnemySpawnTime = gameFrame;
-                enemySpawnInterval = Math.max(50, enemySpawnInterval - 2);
-            }
-        }
-
-        function spawnPowerUp() {
-            if (gameFrame - lastPowerUpSpawnTime > powerUpSpawnInterval) {
-                const x = Math.random() * canvas.width;
-                const y = -50;
-                const powerUpTypes = ['fastShoot', 'shield', 'multiShot'];
-                const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
-                powerUps.push(new PowerUp(x, y, randomType));
-                lastPowerUpSpawnTime = gameFrame;
-                powerUpSpawnInterval = 300 + Math.random() * 200;
-            }
-        }
-
-        function updateScore(points) {
-            score += points;
-            scoreDisplay.textContent = `Score: ${score}`;
-            console.log(`Score updated to: ${score}`);
-        }
-
-        function checkCollisions() {
-            for (let i = 0; i < projectiles.length; i++) {
-                for (let j = 0; j < enemies.length; j++) {
-                    if (isCollision(projectiles[i], enemies[j])) {
-                        projectiles.splice(i, 1);
-                        enemies.splice(j, 1);
-                        i--;
-                        updateScore(100);
-                        console.log("Collision detected - Enemy destroyed!");
-                        break;
-                    }
-                }
-            }
-
-            for (let i = 0; i < enemyProjectiles.length; i++) {
-                if (isCollision(enemyProjectiles[i], player)) {
-                    enemyProjectiles.splice(i, 1);
-                    player.takeDamage();
-                    i--;
-                }
-            }
-
-            for (let i = 0; i < powerUps.length; i++) {
-                if (isCollision(powerUps[i], player)) {
-                    applyPowerUpEffect(powerUps[i].type);
-                    powerUps.splice(i, 1);
-                    i--;
-                }
-            }
-        }
-
-        function applyPowerUpEffect(type) {
-            switch (type) {
-                case 'fastShoot':
-                    player.shootInterval = 10;
-                    setTimeout(() => { player.shootInterval = 25; }, 5000);
-                    break;
-                case 'shield':
-                    player.becomeInvincible();
-                    break;
-                case 'multiShot':
-                    player.multiShotActive = true;
-                    setTimeout(() => { player.multiShotActive = false; }, 7000);
-                    break;
-            }
-            console.log(`Power-up activated: ${type}`);
-        }
-
-
-        function isCollision(rect1, rect2) {
-            const collision = (
-                rect1.x < rect2.x + rect2.width &&
-                rect1.x + rect1.width > rect2.x &&
-                rect1.y < rect2.y + rect2.height &&
-                rect1.y + rect1.height > rect2.y
-            );
-            if (collision) {
-                console.log("isCollision() - Collision detected!");
-            }
-            return collision;
-        }
-
-        function gameOver() {
-            gameRunning = false;
-            gameOverScreen.classList.remove('hidden');
-            finalScoreDisplay.textContent = `Your Final Score: ${score}`;
-        }
-
-        function resetGame() {
-            console.log('resetGame() called');
-            score = 0;
-            lives = 3;
-            level = 1;
-            enemySpawnInterval = 150;
-            powerUpSpawnInterval = 300;
-            lastEnemySpawnTime = 0;
-            lastPowerUpSpawnTime = 0;
-            gameFrame = 0;
-            scoreDisplay.textContent = `Score: ${score}`;
-            livesDisplay.textContent = `Lives: ${lives}`;
-            enemies = [];
-            projectiles = [];
-            enemyProjectiles = [];
-            powerUps = [];
-            player = new Player();
-            gameOverScreen.classList.add('hidden');
-            startScreen.classList.add('hidden');
-            gameRunning = true;
-        }
-
-        function gameLoop() {
-            console.log('gameLoop() called');
-            if (!gameRunning) {
-                console.log('gameLoop() - gameRunning is false, exiting');
-                return;
-            }
-
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            spawnEnemy();
-            spawnPowerUp();
-
-            player.updateInvincibility();
-            player.draw();
-
-            enemies.forEach(enemy => {
-                enemy.update();
-                enemy.draw();
-            });
-
-            projectiles.forEach(projectile => {
-                projectile.update();
-                projectile.draw();
-            });
-            projectiles = projectiles.filter(projectile => projectile.y > 0);
-
-            enemyProjectiles.forEach(projectile => {
-                projectile.update();
-                enemyProjectiles.draw();
-            });
-            enemyProjectiles = enemyProjectiles.filter(projectile => projectile.y < canvas.height);
-
-            powerUps.forEach(powerUp => {
-                powerUp.update();
-                powerUp.draw();
-            });
-            powerUps = powerUps.filter(powerUp => powerUp.y < canvas.height);
-
-            checkCollisions();
-
-            gameFrame++;
-            requestAnimationFrame(gameLoop);
-        }
-
-        // --- Input Handling --- (Input handling code remains the same)
-        const keys = {};
-        document.addEventListener('keydown', (e) => { keys[e.key] = true; });
-        document.addEventListener('keyup', (e) => { keys[e.key] = false; });
-        function handleInput() {
-            if (keys['ArrowLeft'] || keys['a']) {
-                player.moveLeft();
-            }
-            if (keys['ArrowRight'] || keys['d']) {
-                player.moveRight();
-            }
-            if (keys[' '] || keys['Spacebar']) {
-                player.shoot();
-                keys[' '] = false;
-                keys['Spacebar'] = false;
-            }
-        }
-
-
-        // --- Event Listeners --- (Event listeners - added chat input listener)
-        restartButton.addEventListener('click', () => { resetGame(); gameLoop(); });
-        startGameButton.addEventListener('click', () => { console.log('Start Game button clicked!'); resetGame(); startScreen.classList.add('hidden'); gameLoop(); connectWebSocket(); }); // Connect WebSocket on game start!
-        instructionsButton.addEventListener('click', () => { instructionsPopup.classList.remove('hidden'); });
-        closeInstructionsButton.addEventListener('click', () => { instructionsPopup.classList.add('hidden'); });
-
+    function setupChatInput() {
         chatInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
-                event.preventDefault();
                 const message = chatInput.value.trim();
                 if (message) {
-                    sendChatMessage(username, message);
+                    if (message.startsWith('/pm ')) {
+                        const parts = message.substring(4).split(' ', 1);
+                        const recipientId = parts[0];
+                        const privateMessage = parts[1];
+                        if (recipientId && privateMessage) {
+                            socket.emit('privateMessage', { recipientId: recipientId, message: privateMessage });
+                        } else {
+                            addChatMessage('System', 'Usage: /pm [PlayerID] [Message]');
+                        }
+
+                    } else {
+                        socket.emit('chatMessage', { message: message });
+                    }
                     chatInput.value = '';
                 }
             }
         });
+    }
+
+    function addChatMessage(playerId, message) {
+        const li = document.createElement('li');
+        li.textContent = `${playerId}: ${message}`;
+        messagesList.appendChild(li);
+        messagesList.scrollTop = messagesList.scrollHeight; // Scroll to bottom
+    }
+
+    function updatePlayerUI(currentPlayer) {
+        playerNameDisplay.textContent = currentPlayer.name;
+        playerHealthDisplay.textContent = currentPlayer.health + ' / ' + currentPlayer.maxHealth;
+        playerCopperDisplay.textContent = currentPlayer.copper;
+        updateInventoryUI();
+    }
+
+    function updateInventoryUI() {
+        inventoryItemsList.innerHTML = ''; // Clear current list
+        offerItemSelect.innerHTML = '<option value="-1">No Item</option>'; // Reset offer select
+        equipItemButton.style.display = 'none'; // Hide equip button by default
+        equippedItemDisplay.textContent = player.equippedItem ? player.equippedItem.type : 'None';
 
 
-        // --- Game Initialization and Start --- (Game init and loop remain mostly the same)
-        function init() {
-            player = new Player();
-            livesDisplay.textContent = `Lives: ${lives}`;
-            scoreDisplay.textContent = `Score: ${score}`;
-            displayChatMessage('[System]', `Welcome, ${username}!`);
+        player.inventory.forEach((item, index) => {
+            const li = document.createElement('li');
+            li.textContent = `${item.type} ${item.damage ? '(Damage: ' + item.damage + ')' : ''} ${item.defense ? '(Defense: ' + item.defense + ')' : ''} ${item.healing ? '(Healing: ' + item.healing + ')' : ''}`;
+            li.dataset.index = index; // Store index for selection
+            li.addEventListener('click', handleInventoryItemClick); // Add click handler
+            inventoryItemsList.appendChild(li);
 
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = `${item.type} ${item.damage ? '(Damage: ' + item.damage + ')' : ''} ${item.defense ? '(Defense: ' + item.defense + ')' : ''} ${item.healing ? '(Healing: ' + item.healing + ')' : ''}`;
+            offerItemSelect.appendChild(option);
+        });
+
+        // Re-highlight selected item if index is valid
+        if (selectedInventoryIndex >= 0 && selectedInventoryIndex < player.inventory.length) {
+            const selectedLi = inventoryItemsList.querySelector(`li[data-index="${selectedInventoryIndex}"]`);
+            if (selectedLi) {
+                selectedLi.classList.add('selected');
+                equipItemButton.style.display = 'inline-block'; // Show equip button when item is selected
+            }
+        }
+    }
+
+    function setupInventoryUIListeners() {
+        equipItemButton.addEventListener('click', equipSelectedItem);
+    }
+
+
+    function handleInventoryItemClick(event) {
+        // Remove previous selection highlight
+        const currentlySelected = inventoryItemsList.querySelector('li.selected');
+        if (currentlySelected) {
+            currentlySelected.classList.remove('selected');
         }
 
-        init();
-        function update() { if (!gameRunning) return; handleInput(); }
-        function mainGameLoop() { update(); gameLoop(); }
-        setInterval(mainGameLoop, 1000/60);
-    </script>
-</body>
-</html>
+        const clickedLi = event.target;
+        clickedLi.classList.add('selected');
+        selectedInventoryIndex = parseInt(clickedLi.dataset.index, 10);
+        equipItemButton.style.display = 'inline-block'; // Show equip button
+    }
+
+
+    function equipSelectedItem() {
+        if (selectedInventoryIndex >= 0 && player.inventory[selectedInventoryIndex]) {
+            player.equippedItem = player.inventory[selectedInventoryIndex];
+            equippedItemDisplay.textContent = player.equippedItem.type;
+            updateInventoryUI(); // Re-render inventory to reflect equipped item (optional visual cue)
+            selectedInventoryIndex = -1; // Reset selection after equipping
+            equipItemButton.style.display = 'none'; // Hide equip button after use
+        }
+    }
+
+
+    function render() {
+        if (!assetsLoaded) {
+            requestAnimationFrame(render);
+            return;
+        }
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        renderGameWorld();
+        renderItems();
+        renderEnemies();
+        renderPlayers();
+        requestAnimationFrame(render);
+    }
+
+    function renderGameWorld() {
+        const worldWidthInTiles = 200;
+        const worldHeightInTiles = 200;
+
+        if (gameWorld.length === 0) {
+            // Initialize client-side game world once if not already initialized
+            for (let y = 0; y < worldHeightInTiles; y++) {
+                gameWorld[y] = [];
+                for (let x = 0; x < worldWidthInTiles; x++) {
+                    gameWorld[y][x] = 0; // Default to floor initially, server will update if needed
+                }
+            }
+            // Replicate server-side world generation logic here if needed for client-side rendering details
+            // (Or request world data from server if it becomes more complex)
+             // Example: Replicate room and corridor generation (match server's logic in server.js)
+            createRoomClient(20, 20, 40, 40);
+            createRoomClient(80, 80, 60, 60);
+            createRoomClient(20, 120, 50, 50);
+            createRoomClient(120, 20, 60, 40);
+
+            createCorridorClient(50, 30, 80, 30);
+            createCorridorClient(30, 50, 30, 120);
+            createCorridorClient(130, 50, 130, 80);
+            createCorridorClient(70, 110, 120, 110);
+        }
+
+
+        for (let y = 0; y < worldHeightInTiles; y++) {
+            for (let x = 0; x < worldWidthInTiles; x++) {
+                let tileImage = tileFloorImage; // Default to floor
+                if (gameWorld[y][x] === 1) { // TILE_WALL
+                    tileImage = tileWallImage;
+                } else if (gameWorld[y][x] === 2) { // TILE_DOOR
+                    tileImage = tileDoorImage;
+                }
+                ctx.drawImage(tileImage, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+            }
+        }
+    }
+
+    // Client-side room creation (match server logic)
+    function createRoomClient(x, y, width, height) {
+        for (let i = y; i < y + height; i++) {
+            for (let j = x; j < x + width; j++) {
+                if (i === y || i === y + height - 1 || j === x || j === x + width - 1) {
+                    gameWorld[i][j] = 1; // TILE_WALL
+                } else {
+                    gameWorld[i][j] = 3; // TILE_FLOOR
+                }
+            }
+        }
+        gameWorld[y + Math.floor(height / 2)][x] = 2; // TILE_DOOR
+    }
+
+    // Client-side corridor creation (match server logic)
+    function createCorridorClient(x1, y1, x2, y2) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const length = Math.max(Math.abs(dx), Math.abs(dy));
+
+        for (let i = 0; i <= length; i++) {
+            const x = x1 + Math.round(i * dx / length);
+            const y = y1 + Math.round(i * dy / length);
+            gameWorld[y][x] = 3; // TILE_FLOOR
+        }
+    }
+
+
+    function renderPlayers() {
+        for (const playerId in players) {
+            const p = players[playerId];
+            if (!p) continue;
+            const spriteX = p.direction * 8 * 64; // Direction * frames * sprite width
+            const spriteY = p.frameIndex * 64;      // Frame index * sprite height
+            ctx.drawImage(playerSpriteSheet, spriteX, spriteY, 64, 64, p.x - p.width/2, p.y - p.height/2, p.width, p.height);
+
+            // Health bar above player
+            const healthBarWidth = p.width;
+            const healthBarHeight = 5;
+            const healthPercentage = p.health / p.maxHealth;
+            ctx.fillStyle = 'red';
+            ctx.fillRect(p.x - healthBarWidth / 2, p.y - p.height / 2 - 10, healthBarWidth, healthBarHeight);
+            ctx.fillStyle = 'green';
+            ctx.fillRect(p.x - healthBarWidth / 2, p.y - p.height / 2 - 10, healthBarWidth * healthPercentage, healthBarHeight);
+
+            // Display player name (optional)
+            ctx.fillStyle = 'white';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText(p.name, p.x, p.y - p.height / 2 - 20);
+        }
+    }
+
+    function renderItems() {
+        for (const itemId in items) {
+            const item = items[itemId];
+            const itemImage = itemImages[item.type];
+            if (itemImage) {
+                ctx.drawImage(itemImage, item.x - 32, item.y - 32, 64, 64); // Adjust position and size as needed
+            }
+        }
+    }
+
+    function renderEnemies() {
+        for (const enemyId in enemies) {
+            const enemy = enemies[enemyId];
+            if (!enemy) continue;
+            const spriteX = enemy.direction * 8 * 64; // Direction * frames * sprite width
+            const spriteY = enemy.frameIndex * 64;      // Frame index * sprite height
+            ctx.drawImage(enemySpriteSheet, spriteX, spriteY, 64, 64, enemy.x - enemy.width/2, enemy.y - enemy.height/2, enemy.width, enemy.height);
+
+             // Health bar above enemy
+            const healthBarWidth = enemy.width;
+            const healthBarHeight = 5;
+            const healthPercentage = enemy.health / enemy.maxHealth;
+            ctx.fillStyle = 'red';
+            ctx.fillRect(enemy.x - healthBarWidth / 2, enemy.y - enemy.height / 2 - 10, healthBarWidth, healthBarHeight);
+            ctx.fillStyle = 'green';
+            ctx.fillRect(enemy.x - healthBarWidth / 2, enemy.y - enemy.height / 2 - 10, healthBarWidth * healthPercentage, healthBarHeight);
+        }
+    }
+
+    function gameLoop() {
+        if (!player || !assetsLoaded) {
+            requestAnimationFrame(gameLoop);
+            return;
+        }
+
+        handleItemInteraction(); // Check for item pickups
+        handleCombat(); // Handle player attacks
+
+        requestAnimationFrame(gameLoop);
+    }
+
+    function handleItemInteraction() {
+        for (const itemId in items) {
+            const item = items[itemId];
+            const distance = Math.hypot(player.x - item.x, player.y - item.y);
+            if (distance < TILE_SIZE / 2) { // Pickup radius
+                socket.emit('pickupItem', itemId);
+                break; // Pick up only one item at a time per frame
+            }
+        }
+    }
+
+    function handleCombat() {
+        if (!player || !player.equippedItem) return; // Only attack if player has weapon equipped
+
+        canvas.onclick = (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = event.clientX - rect.left;
+            const mouseY = event.clientY - rect.top;
+
+            // Check for player targets
+            for (const targetPlayerId in players) {
+                if (targetPlayerId === socket.id) continue; // Don't attack self
+                const targetPlayer = players[targetPlayerId];
+                if (!targetPlayer) continue;
+
+                const distance = Math.hypot(mouseX - targetPlayer.x, mouseY - targetPlayer.y);
+                if (distance < TILE_SIZE / 2) { // Click radius for player
+                    socket.emit('attack', { targetId: targetPlayerId, weapon: player.equippedItem });
+                    return; // Attack only one target
+                }
+            }
+
+            // Check for enemy targets
+            for (const enemyId in enemies) {
+                const enemy = enemies[enemyId];
+                if (!enemy) continue;
+                const distance = Math.hypot(mouseX - enemy.x, mouseY - enemy.y);
+                if (distance < TILE_SIZE / 2) { // Click radius for enemy
+                    socket.emit('attack', { targetId: enemyId, weapon: player.equippedItem });
+                    return; // Attack only one target
+                }
+            }
+        };
+    }
+
+    // --- Trade UI Functions ---
+    function setupTradeUIListeners() {
+        requestTradeButton.addEventListener('click', sendTradeRequest);
+        cancelTradeButton.addEventListener('click', cancelTradeRequest);
+        acceptTradeButton.addEventListener('click', acceptTrade);
+        declineTradeButton.addEventListener('click', declineTrade);
+    }
+
+    function initiateTrade(targetPlayerId, targetPlayerName) {
+        tradeUI.style.display = 'block';
+        tradePlayerNameDisplay.textContent = targetPlayerName;
+        tradeRequestDisplay.style.display = 'none';
+        requestTradeButton.style.display = 'block';
+        cancelTradeButton.style.display = 'none';
+        offerItemSelect.value = -1; // Reset item selection
+        offerCopperInput.value = 0;
+        tradeUI.dataset.targetPlayerId = targetPlayerId; // Store target player ID
+    }
+
+    function hideTradeUI() {
+        tradeUI.style.display = 'none';
+        tradeRequestDisplay.style.display = 'none';
+        cancelTradeButton.style.display = 'none';
+        requestTradeButton.style.display = 'block';
+    }
+
+    function sendTradeRequest() {
+        const targetPlayerId = tradeUI.dataset.targetPlayerId;
+        const offeredItemIndex = offerItemSelect.value;
+        const offeredCopper = parseInt(offerCopperInput.value, 10);
+
+        if (targetPlayerId) {
+            socket.emit('tradeRequest', { recipientId: targetPlayerId, offeredItemIndex: offeredItemIndex, offeredCopper: offeredCopper });
+            requestTradeButton.style.display = 'none';
+            cancelTradeButton.style.display = 'block';
+        }
+    }
+
+    function cancelTradeRequest() {
+        hideTradeUI(); // For now, simple cancel, may need server-side cancel if trade requests are persisted
+    }
+
+    function displayTradeRequest(data) {
+        tradeUI.style.display = 'block';
+        tradeRequestDisplay.style.display = 'block';
+        tradeRequestSenderDisplay.textContent = data.senderName;
+        tradeRequestItemDisplay.textContent = data.offeredItem ? data.offeredItem.type : 'None';
+        tradeRequestCopperDisplay.textContent = data.offeredCopper;
+        tradeUI.dataset.tradeSenderId = data.senderId; // Store sender ID for accepting/declining
+        requestTradeButton.style.display = 'none';
+        cancelTradeButton.style.display = 'none';
+    }
+
+    function acceptTrade() {
+        const senderId = tradeUI.dataset.tradeSenderId;
+        const requestedItemIndex = -1; // Assume player is not requesting item for simplicity, can be extended
+        const requestedCopper = 0; // Assume player is not requesting copper for simplicity
+
+        if (senderId) {
+            socket.emit('acceptTrade', { senderId: senderId, requestedItemIndex: requestedItemIndex, requestedCopper: requestedCopper });
+        }
+    }
+
+    function declineTrade() {
+        const senderId = tradeUI.dataset.tradeSenderId;
+        if (senderId) {
+            socket.emit('declineTrade', senderId);
+            hideTradeUI();
+        }
+    }
+
+
+    return {
+        init: init
+    };
+})();
+
+document.addEventListener('DOMContentLoaded', () => {
+    GameClient.init();
+});
+</script>
+--- END OF GIANT CODE BLOCK ---
