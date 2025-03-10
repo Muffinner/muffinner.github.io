@@ -327,16 +327,16 @@
                 this.bulletSpawner = new BulletSpawner();
 
                 const playerImage = new Image();
-                playerImage.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAKoSURBVGhD7ZnfbxNBFMff6SKQSrLRUkhRFNESW6S7Ag1BYTGEpS9NIlLp2x81Ck3s3pUuLRV/EigEC6VlIZVQQqywEFtEC6VUEAsl9S2b6h742Jhj29mdud0Z897cvPN9f+7M7DfvG4jYLy9uGk08jAghRAxK6Y17L/0G+oN85c+j/R51Q6b74tD/WnE4a1wghRHz3gUjAGhHqJ6hJkCKKj6jM6859u8fFm+h115n2qf0Zk7g6h3wG6Lz78w6h2g6X3UWoRjS+2gM06tI/bJcUMuWJ8c8vYfFzBfywJhmw2eGf+8fFfGg8G+Lw/Xn0O+vW7A/2/O2H9/S3o2/uVbUFX979049v3vVf/D37L6lH5+q/5q3p/t/t9f4Pj476jG+R+Y2+b/R7k+/0Uf2zHqM0m/73K53G+hI34w307F+9Y/l6wI3/0iH773l6jF5v6jO/rWn8vR7/3X8r/uH0P1Gv4z+x/sI9j/4b4b/3b6s3xvqV2v431kfpO+vSfrz6HjO9x74/y1/jE1iP+Uf8M/Vp9L9GvN9Y/k97O/z9T+tV8+N+T/q34/Kj6vJ/2h+i7r4P+z97eL7e543z/w5/j3/o3xv302bL8G6T72wXj/3l7zB9hPpvW7xL9X5k176hI+sD6d3rJ9C3/92U1R/1g/Bv2/bL9+G/eH9f2N9R7/yM/Q4W3y76Yv9+gH6w+g/Q/g310W2wAAAAASUVORK5CYII='; // Replace with your actual base64-encoded image
+                // VERY IMPORTANT: Use the placeholder for now.  Replace later!
+                playerImage.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
                 this.player = new Player(this.canvas.width / 2 - 25, this.canvas.height - 75, 50, 50, 200, playerImage, this.input, this.bulletSpawner);
 
                 this.enemies = [];
                 this.enemySpawnInterval = 2000; // Spawn an enemy every 2 seconds
                 this.lastEnemySpawnTime = 0;
                 this.enemyImage = new Image();
-                this.enemyImage.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAYAAABXAvmHAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAH9SURBVGhD7ZndcdpAEMfP0QiKr1LRIrWk/hYWiYvYJTZKNhXpWAzT1UkljBv2YFpWlF8S2YQ2vWlP4U94wJj+pLczuzP895x7z3wYYhMJpPJZDKZTCaTyWQymUwmk8lMM6qGooG+I0y6Iwxo7RkGGrPj2W4e90R+g9E/416fI4xV/w0x+9JdELqQh23hKGL92t+w74b2I7g0x39fUaD9K+b4+L9b4lDPs1x6wF+vP4N8c83hvjnGxLq63sS+tI/Rj7yK7f26D6zW+9M7sWn8e52xPqJbX3dEbXfM0XU/1yJ+z89f1M/7W3k1/YQz+/99z9tI73H/t7zT/4uGgXNn/9w/n9lAObV8n9lMObZ8r9f1I8055H5B51v2bXyPzV/q81v2p/k8bL9v1w+rN9P579d46W45H+540K9sf7XhTr2yP593o9kft9no5j/59zO5v+/U0u8//tLrvL/d5H5T/sJ//L+W/P37K75h76R/5d0Jk08jAYVlT39T53T0AAAAASUVORK5CYII=';// Replace with your actual base64-encoded image
-               // this.enemyImage.src = 'assets/images/enemy.png'
-
+                // VERY IMPORTANT: Use the placeholder for now.  Replace later!
+                this.enemyImage.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
 
                 this.ui = new UI(this.player, this.renderer);  // create UI
                 this.network = new Network(); //create network
