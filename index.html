@@ -1,508 +1,279 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Space Shooter</title>
+    <title>Catch the Dot!</title>
     <style>
         body {
-            margin: 0;
+            font-family: sans-serif;
             display: flex;
-            flex-direction: column; /* Stack canvas and button vertically */
-            justify-content: center;
+            flex-direction: column;
             align-items: center;
+            justify-content: center;
             height: 100vh;
-            background-color: black;
-            overflow: hidden; /* Prevent scrollbars */
-        }
-
-        canvas {
-            background-color: #222; /* Dark gray background for the game */
-            border: 1px solid white; /* Optional border */
-        }
-
-        #instructionsButton {
-            margin-top: 10px;
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-
-        #instructionsPopup {
-            display: none; /* Initially hidden */
-            position: fixed; /* Stay in place even when scrolling */
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            margin: 0;
             background-color: #f0f0f0;
-            padding: 20px;
-            border: 2px solid #333;
-            z-index: 1000; /* Make sure it's on top */
-            max-width: 80%;  /* Responsive width */
-            max-height: 80%; /* Responsive height */
-            overflow: auto;  /* Add scrollbars if content overflows */
         }
-        #closeButton {
-            background-color: #f44336;
-            color: white;
-            padding: 5px 10px;
-            border: none;
-            cursor: pointer;
-            margin-top: 10px; /* Add some space between text and button */
+
+        #game-container {
+            position: relative;
+            width: 400px;
+            height: 300px;
+            border: 2px solid black;
+            background-color: white;
+        }
+
+        .player {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background-color: blue; /* Default color */
+            border-radius: 50%; /* Make it a circle */
+        }
+        #player1{
+          background-color: blue;
+        }
+
+        #player2{
+            background-color: red;
+        }
+
+        #dot {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: green;
+            border-radius: 50%;
+        }
+
+        #score {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        #message{
+            color:red;
         }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas"></canvas>
-    <button id="instructionsButton">Instructions</button>
-
-    <div id="instructionsPopup">
-        <h2>Instructions</h2>
-        <p>
-            Use the arrow keys (or WASD) to move your spaceship.
-            Press Spacebar (or Left Mouse click) to shoot.
-            Destroy enemies to earn points.
-            Avoid being hit by enemies. Your health is shown at the top.
-            Reach a score of 500 to win!
-        </p>
-        <button id="closeButton">Close</button>
+    <div id="game-container">
+        <div id="player1" class="player"></div>
+        <div id="player2" class="player"></div>
+        <div id="dot"></div>
     </div>
+    <div id="score">
+        Player 1: <span id="score1">0</span> | Player 2: <span id="score2">0</span>
+    </div>
+    <div id="message"></div>
+
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <!-- Firebase Realtime Database -->
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
 
     <script>
-        // renderer.js
-        class Renderer {
-            constructor(canvas) {
-                this.canvas = canvas;
-                this.ctx = canvas.getContext('2d');
+        // --- Firebase Configuration ---
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY", // REPLACE WITH YOUR KEYS
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // REPLACE
+            projectId: "YOUR_PROJECT_ID", // REPLACE
+            storageBucket: "YOUR_PROJECT_ID.appspot.com", // REPLACE
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // REPLACE
+            appId: "YOUR_APP_ID", // REPLACE
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com" // REPLACE
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // --- Game Variables ---
+        const gameContainer = document.getElementById('game-container');
+        const player1 = document.getElementById('player1');
+        const player2 = document.getElementById('player2');
+        const dot = document.getElementById('dot');
+        const score1Display = document.getElementById('score1');
+        const score2Display = document.getElementById('score2');
+        const messageDisplay = document.getElementById('message');
+
+        let player1Pos = { x: 50, y: 50 };
+        let player2Pos = { x: 350, y: 250 };
+        let dotPos = { x: 200, y: 150 };
+        let score1 = 0;
+        let score2 = 0;
+        let myPlayerId = null; // 'player1' or 'player2'
+
+        // --- Firebase References ---
+        const gameRef = database.ref('game');
+        const player1Ref = gameRef.child('player1');
+        const player2Ref = gameRef.child('player2');
+        const dotRef = gameRef.child('dot');
+        const scoreRef = gameRef.child('score');
+
+
+        // --- Player Assignment ---
+        gameRef.child('players').transaction(players => {
+            if (!players) {
+                players = { player1: true, player2: false }; // player1 joins first
+                myPlayerId = 'player1';
+            } else if (!players.player1) {
+                players.player1 = true;
+                myPlayerId = 'player1';
+            } else if (!players.player2) {
+                players.player2 = true;
+                myPlayerId = 'player2';
+            } else {
+                // Game is full
+                messageDisplay.textContent = 'Game is full!';
+                return; // Don't update the transaction
+            }
+            return players;
+        }, (error, committed) => {
+            if (error) {
+                console.error("Player assignment failed:", error);
+            } else if (committed) {
+                console.log("I am:", myPlayerId);
+                setupGame(); // Start game setup after player assignment
+            }
+        });
+
+        function setupGame() {
+            // --- Initial Setup and Event Listeners ---
+
+            // Update initial positions in Firebase (only if you're player 1)
+            if (myPlayerId === 'player1') {
+                player1Ref.set(player1Pos);
+                player2Ref.set(player2Pos);
+                dotRef.set(dotPos);
+                scoreRef.set({ player1: 0, player2: 0 });
             }
 
-            clear() {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            }
+            // Listen for changes from other players
+            player1Ref.on('value', snapshot => {
+                if (myPlayerId !== 'player1') { // Only update if it's the *other* player
+                    player1Pos = snapshot.val();
+                    updatePlayerPosition(player1, player1Pos);
+                }
+            });
+            player2Ref.on('value', snapshot => {
+                if (myPlayerId !== 'player2') {
+                    player2Pos = snapshot.val();
+                    updatePlayerPosition(player2, player2Pos);
+                }
+            });
 
-            draw(gameObject) {
-                if (gameObject.image && gameObject.image.complete && gameObject.image.naturalWidth !== 0) {
-                  this.ctx.drawImage(
-                      gameObject.image,
-                      gameObject.x,
-                      gameObject.y,
-                      gameObject.width,
-                      gameObject.height
-                  );
+            dotRef.on('value', snapshot => {
+                dotPos = snapshot.val();
+                updateDotPosition();
+            });
+
+            scoreRef.on('value', snapshot => {
+                const scores = snapshot.val();
+                score1 = scores.player1;
+                score2 = scores.player2;
+                updateScoreDisplay();
+            });
+
+            // --- Player Movement (Client-Side) ---
+            document.addEventListener('keydown', (event) => {
+                let myPos, myRef;
+                if (myPlayerId === 'player1') {
+                    myPos = player1Pos;
+                    myRef = player1Ref;
+                } else if (myPlayerId === 'player2') {
+                    myPos = player2Pos;
+                    myRef = player2Ref;
                 } else {
-                    // Fallback for objects without images (e.g., draw a rectangle)
-                    this.ctx.fillStyle = gameObject.color || 'white';
-                    //For the player, force green:
-                    if (gameObject instanceof Player) {
-                        this.ctx.fillStyle = 'green';
-                    }
-                    this.ctx.fillRect(gameObject.x, gameObject.y, gameObject.width, gameObject.height);
+                    return; // Not a valid player
                 }
-            }
 
-
-            drawText(text, x, y, color = 'white', font = '16px Arial') {
-                this.ctx.fillStyle = color;
-                this.ctx.font = font;
-                this.ctx.fillText(text, x, y);
-            }
-        }
-
-        // input.js
-        class InputHandler {
-            constructor() {
-                this.keys = {};
-                window.addEventListener('keydown', this.handleKeyDown.bind(this));
-                window.addEventListener('keyup', this.handleKeyUp.bind(this));
-                window.addEventListener('mousedown', this.handleMouseDown.bind(this));
-                window.addEventListener('mouseup', this.handleMouseUp.bind(this));
-            }
-
-            handleKeyDown(event) {
-                this.keys[event.code] = true;
-            }
-
-            handleKeyUp(event) {
-                this.keys[event.code] = false;
-            }
-
-            handleMouseDown(event) {
-                this.keys['Mouse' + event.button] = true;  //e.g., 'Mouse0' for left click
-            }
-
-            handleMouseUp(event) {
-                this.keys['Mouse' + event.button] = false;
-            }
-
-            isKeyDown(key) {
-                return this.keys[key] || false;
-            }
-
-            isMouseButtonDown(button) {
-                return this.keys['Mouse' + button] || false;
-            }
-        }
-
-        // bullet.js
-        class Bullet {
-            constructor(x, y, velocityY, width = 5, height = 10, color = 'yellow') {
-                this.x = x - width / 2;
-                this.y = y;
-                this.velocityY = velocityY;
-                this.width = width;
-                this.height = height;
-                this.color = color;
-                this.isActive = true;  // Flag for removing off-screen bullets
-                this.damage = 10; // Damage this bullet deals
-            }
-
-            update(deltaTime) {
-                this.y += this.velocityY * deltaTime;
-
-                // Check if bullet is off-screen
-                if (this.y + this.height < 0 || this.y > 600) {
-                    this.isActive = false;
+                const speed = 5;
+                switch (event.key) {
+                    case 'ArrowUp':    myPos.y -= speed; break;
+                    case 'ArrowDown':  myPos.y += speed; break;
+                    case 'ArrowLeft':  myPos.x -= speed; break;
+                    case 'ArrowRight': myPos.x += speed; break;
+                    default: return; // Ignore other keys
                 }
-            }
-            collidesWith(other) {
-                return (
-                    this.x < other.x + other.width &&
-                    this.x + this.width > other.x &&
-                    this.y < other.y + other.height &&
-                    this.y + this.height > other.y
-                );
-            }
-        }
 
-        class BulletSpawner {
-            constructor() {
-                this.bullets = [];
-            }
-
-            spawnBullet(x, y, velocityY) {
-                this.bullets.push(new Bullet(x, y, velocityY));
-            }
-
-            update(deltaTime) {
-                for (let i = this.bullets.length - 1; i >= 0; i--) {
-                    this.bullets[i].update(deltaTime);
-                    if (!this.bullets[i].isActive) {
-                        this.bullets.splice(i, 1); // Remove inactive bullets
-                    }
-                }
-            }
-
-            render(renderer) {
-                this.bullets.forEach(bullet => renderer.draw(bullet));
-            }
-
-            checkCollisions(targets) {
-                for (let i = this.bullets.length - 1; i >= 0; i--) {
-                    const bullet = this.bullets[i];
-                    for (let j = targets.length - 1; j >= 0; j--) {
-                        const target = targets[j];
-                        if (bullet.collidesWith(target)) {
-                            target.takeDamage(bullet.damage);
-                            bullet.isActive = false; // Remove bullet on collision
-                             // No break here, as we handle score in Game now.
-                            return true; // Indicate a collision occurred.
-
-                        }
-                    }
-                }
-                return false; // No collision.
-            }
-        }
-
-        // player.js
-        class Player {
-            constructor(x, y, width, height, speed, image, inputHandler, bulletSpawner) {
-                this.x = x;
-                this.y = y;
-                this.width = width;
-                this.height = height;
-                this.speed = speed;
-                this.image = image;
-                this.input = inputHandler; // Dependency Injection
-                this.bulletSpawner = bulletSpawner; // Dependency Injection
-                this.shootCooldown = 250; //ms
-                this.lastShotTime = 0;
-                this.health = 100; // add healt
-                this.color = 'green'; // Ensure green color
-            }
-
-            update(deltaTime) {
-                // Movement
-                if (this.input.isKeyDown('ArrowUp') || this.input.isKeyDown('KeyW')) {
-                    this.y -= this.speed * deltaTime;
-                }
-                if (this.input.isKeyDown('ArrowDown') || this.input.isKeyDown('KeyS')) {
-                    this.y += this.speed * deltaTime;
-                }
-                if (this.input.isKeyDown('ArrowLeft') || this.input.isKeyDown('KeyA')) {
-                    this.x -= this.speed * deltaTime;
-                }
-                if (this.input.isKeyDown('ArrowRight') || this.input.isKeyDown('KeyD')) {
-                    this.x += this.speed * deltaTime;
-                }
                 // Keep player within bounds
-                this.x = Math.max(0, Math.min(this.x, 800 - this.width)); // Assuming canvas width is 800
-                this.y = Math.max(0, Math.min(this.y, 600 - this.height));  // Assuming canvas height is 600
+                myPos.x = Math.max(0, Math.min(myPos.x, gameContainer.offsetWidth - player1.offsetWidth));
+                myPos.y = Math.max(0, Math.min(myPos.y, gameContainer.offsetHeight - player1.offsetHeight));
 
-                // Shooting (with cooldown)
-                const now = Date.now();
-                if ((this.input.isKeyDown('Space') || this.input.isMouseButtonDown(0)) && now - this.lastShotTime > this.shootCooldown) {
-                    this.bulletSpawner.spawnBullet(this.x + this.width / 2, this.y, -500); // Pass negative velocity for upward movement.
-                    this.lastShotTime = now;
-                }
+                // Update local position and Firebase
+                updatePlayerPosition(myPlayerId === 'player1' ? player1 : player2, myPos);
+                myRef.set(myPos);
 
-            }
-            takeDamage(damage) {
-                this.health -= damage;
-                if (this.health <= 0) {
-                    // Handle player death (e.g., remove from game, show game over)
-                    this.health = 0; // Ensure health doesn't go below 0
-                    console.log("Player died!");
-                }
-            }
-        }
+                // Check for collision (after moving)
+                checkCollision();
+            });
 
 
-        // enemy.js
-        class Enemy {
-            constructor(x, y, width, height, speed, image) {
-                this.x = x;
-                this.y = y;
-                this.width = width;
-                this.height = height;
-                this.speed = speed;
-                this.image = image;
-                this.isActive = true; // For removing off-screen/dead enemies.
-                this.health = 30; // add health
-                this.color = 'red';
+            // --- Helper Functions ---
+            function updatePlayerPosition(player, pos) {
+                player.style.left = pos.x + 'px';
+                player.style.top = pos.y + 'px';
             }
 
-            update(deltaTime) {
-                this.y += this.speed * deltaTime;
-                if (this.y > 600) { // Assuming canvas height is 600
-                    this.isActive = false;
-                }
-            }
-            takeDamage(damage) {
-                this.health -= damage;
-                if (this.health <= 0) {
-                    this.isActive = false; // Mark for removal
-                }
-            }
-        }
-
-        // ui.js
-        class UI {
-            constructor(player, renderer, game) { // Add game reference
-              this.player = player;
-              this.renderer = renderer;
-              this.game = game; // Store the game reference
+            function updateDotPosition() {
+                dot.style.left = dotPos.x + 'px';
+                dot.style.top = dotPos.y + 'px';
             }
 
-            update() {
-              // Display score, health, etc.
-              this.renderer.drawText(`Health: ${this.player.health}`, 10, 20);
-              this.renderer.drawText(`Score: ${this.game.score}`, 10, 40); // Use game.score
-
-                if (this.game.gameOver) {
-                    this.renderer.drawText("Game Over - You Win!", 300, 280, "red", "32px Arial");
-                }
+            function updateScoreDisplay() {
+                score1Display.textContent = score1;
+                score2Display.textContent = score2;
             }
 
-        }
+            function checkCollision() {
+              const playerRect = (myPlayerId === 'player1' ? player1 : player2).getBoundingClientRect();
+              const dotRect = dot.getBoundingClientRect();
 
-
-        // network.js
-        class Network {
-            constructor() {
-                this.socket = null;
-                this.players = {}; // Store other players' data
-                this.playerId = null;  // Our own player ID
-            }
-
-            connect(serverAddress) {
-                this.socket = new WebSocket(serverAddress);
-
-                this.socket.onopen = () => {
-                    console.log('Connected to server');
-                    // Send initial player data (position, etc.)
-                    // this.sendPlayerData();
-                };
-
-                this.socket.onmessage = (event) => {
-                    this.handleMessage(event.data);
-                };
-
-                this.socket.onclose = () => {
-                    console.log('Disconnected from server');
-                };
-
-                this.socket.onerror = (error) => {
-                    console.error('WebSocket error:', error);
-                };
-            }
-             handleMessage(message) {
-                const data = JSON.parse(message);
-                if (data.type ==='id'){
-                  this.playerId = data.id;
-                }
-                else if (data.type === 'playerUpdate') {
-                //Update other players
-                if (data.id !== this.playerId) {
-                    this.players[data.id] = data.playerData; // Assuming playerData has x, y, etc.
-                }
-              } else if (data.type === 'playerDisconnect') {
-                //handle a disconnected player.
-                delete this.players[data.id]
+              if (
+                  playerRect.left < dotRect.right &&
+                  playerRect.right > dotRect.left &&
+                  playerRect.top < dotRect.bottom &&
+                  playerRect.bottom > dotRect.top
+              ) {
+                  // Collision!
+                  if (myPlayerId === 'player1') {
+                      score1++;
+                  } else {
+                      score2++;
+                  }
+                  scoreRef.set({ player1: score1, player2: score2 }); // Update Firebase
+                  moveDot(); // Move the dot (only one player does this)
               }
-              // Handle other message types (new players, bullets, etc.)
             }
 
-            send(data) {
-                if (this.socket && this.socket.readyState === WebSocket.OPEN) {
-                    this.socket.send(JSON.stringify(data));
-                }
+            function moveDot() {
+              if (myPlayerId === 'player1'){ // Only player 1 moves the dot
+                dotPos.x = Math.floor(Math.random() * (gameContainer.offsetWidth - dot.offsetWidth));
+                dotPos.y = Math.floor(Math.random() * (gameContainer.offsetHeight - dot.offsetHeight));
+                dotRef.set(dotPos);  // Update Firebase
+              }
             }
 
-            sendPlayerData(playerData) {
-                this.send({ type: 'playerUpdate', id: this.playerId, playerData });
-            }
-
+            // Initial position updates
+            updatePlayerPosition(player1, player1Pos);
+            updatePlayerPosition(player2, player2Pos);
+            updateDotPosition();
+            updateScoreDisplay();
         }
 
-        // game.js
-        class Game {
-            constructor() {
-                this.canvas = document.getElementById('gameCanvas');
-                this.canvas.width = 800;
-                this.canvas.height = 600;
-                this.renderer = new Renderer(this.canvas);
-                this.input = new InputHandler();
-                this.bulletSpawner = new BulletSpawner();
 
-                const playerImage = new Image();
-                // VERY IMPORTANT: Use the placeholder for now.  Replace later!
-                playerImage.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-                this.player = new Player(this.canvas.width / 2 - 25, this.canvas.height - 75, 50, 50, 200, playerImage, this.input, this.bulletSpawner);
+        // --- Cleanup (Important for disconnecting) ---
 
-                this.enemies = [];
-                this.enemySpawnInterval = 2000; // Spawn an enemy every 2 seconds
-                this.lastEnemySpawnTime = 0;
-                this.enemyImage = new Image();
-                // VERY IMPORTANT: Use the placeholder for now.  Replace later!
-                this.enemyImage.src = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-
-                this.score = 0; // Add score
-                this.gameOver = false; // Game over flag
-                this.goalScore = 500; // Winning score
-
-                this.ui = new UI(this.player, this.renderer, this);  // create UI. Pass 'this' (the Game instance) to UI.
-                this.network = new Network(); //create network
-                this.network.connect('ws://localhost:8080')  // IMPORTANT: Replace with your server address!  This is just an example.
-
-                this.lastFrameTime = 0;
-                this.gameLoop = this.gameLoop.bind(this); // Bind the gameLoop to the Game instance
-
-                 // Instructions popup logic
-                this.instructionsButton = document.getElementById('instructionsButton');
-                this.instructionsPopup = document.getElementById('instructionsPopup');
-                this.closeButton = document.getElementById('closeButton');
-
-                this.instructionsButton.addEventListener('click', () => {
-                    this.instructionsPopup.style.display = 'block';
-                });
-
-                this.closeButton.addEventListener('click', () => {
-                    this.instructionsPopup.style.display = 'none';
-                });
-
+        window.addEventListener('beforeunload', () => {
+            if (myPlayerId) {
+                gameRef.child('players').child(myPlayerId).set(false); // Mark player as disconnected
+                // Turn off listeners
+                player1Ref.off();
+                player2Ref.off();
+                dotRef.off();
+                scoreRef.off();
             }
-
-            spawnEnemy() {
-                const x = Math.random() * (this.canvas.width - 50); // Random X position
-                const enemy = new Enemy(x, 0, 50, 50, 50, this.enemyImage); // Use enemyImage
-                this.enemies.push(enemy);
-            }
-
-            gameLoop(timestamp) {
-                if (this.gameOver) return; // Stop the loop if the game is over
-
-                const deltaTime = (timestamp - this.lastFrameTime) / 1000; // Delta time in seconds
-                this.lastFrameTime = timestamp;
-
-                this.update(deltaTime);
-                this.render();
-                requestAnimationFrame(this.gameLoop);
-            }
-
-            update(deltaTime) {
-                const now = Date.now();
-                if (now - this.lastEnemySpawnTime > this.enemySpawnInterval) {
-                    this.spawnEnemy();
-                    this.lastEnemySpawnTime = now;
-                }
-
-                this.player.update(deltaTime);
-                this.bulletSpawner.update(deltaTime);  //Update the bullets
-
-                 // Enemy update, removal, and score update
-                for (let i = this.enemies.length - 1; i >= 0; i--) {
-                  this.enemies[i].update(deltaTime);
-
-                    if (!this.enemies[i].isActive) {
-                        this.enemies.splice(i, 1);
-                    }
-                }
-
-              //Check collisions and if an enemy has been hit
-               if( this.bulletSpawner.checkCollisions(this.enemies)){
-                 this.score += 10;
-                 if (this.score >= this.goalScore) {
-                      this.gameOver = true;
-                    }
-               }
-                this.ui.update(); // Update UI
-
-                // Send player data to server (throttled)
-                if (this.network.playerId) { // Only send if we have an ID
-                    this.network.sendPlayerData({ x: this.player.x, y: this.player.y, health: this.player.health });
-                }
-
-            }
-
-            render() {
-                this.renderer.clear();
-                this.renderer.draw(this.player);
-                this.bulletSpawner.render(this.renderer);  // Render all bullets
-                this.enemies.forEach(enemy => this.renderer.draw(enemy)); // Draw enemies
-
-
-                // Render other players (simplified for now)
-                for (const playerId in this.network.players) {
-                    if(this.network.playerId!== playerId){
-                      const otherPlayer = this.network.players[playerId];
-                      // You might have a different image/color for other players
-                      this.renderer.draw({ x: otherPlayer.x, y: otherPlayer.y, width: 50, height: 50, color: 'blue' });
-                    }
-                }
-                this.ui.update()// Render UI elements
-            }
-
-            start() {
-                requestAnimationFrame(this.gameLoop);
-            }
-        }
-
-        const game = new Game();
-        game.start();
-
+        });
     </script>
 </body>
 </html>
