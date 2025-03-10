@@ -1,416 +1,546 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Simple FPS Shooter</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galactic Guardians - Pixel Panic</title>
     <style>
-        /* --- CSS: css/style.css --- */
+        /* --- CSS Styles --- */
         body {
             margin: 0;
             overflow: hidden; /* Prevent scrollbars */
-            background-color: #222; /* Dark background */
+            background-color: #000; /* Dark background for space feel */
+            font-family: 'Press Start 2P', cursive; /* Retro font - you'll need to include this or choose another */
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; /* Center vertically */
+        }
+
+        @font-face { /* Example for 'Press Start 2P' - you might need to adjust path */
+            font-family: 'Press Start 2P';
+            src: url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+            font-weight: normal;
+            font-style: normal;
+        }
+
+        #game-container {
+            position: relative; /* For positioning UI elements */
+            border: 5px solid #ddd; /* Optional border for the game area */
+            background-color: #111; /* Slightly darker game background */
         }
 
         #gameCanvas {
-            display: block; /* Remove extra space below canvas */
-            background-color: #333; /* Canvas background */
+            background-color: #000; /* Canvas background */
+            display: block; /* Prevent extra spacing below canvas */
         }
-        /* --- End CSS: css/style.css --- */
+
+        #ui-overlay {
+            position: absolute; /* Overlay on top of the canvas */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none; /* Allow clicks to pass through to canvas if needed */
+        }
+
+        #score, #lives {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            font-size: 16px;
+            text-shadow: 2px 2px 0 #000; /* Add text shadow for retro look */
+            pointer-events: none; /* Ensure it doesn't block canvas interactions */
+        }
+        #lives {
+            left: auto;
+            right: 10px;
+        }
+
+        #game-over, #start-screen {
+            text-align: center;
+            background-color: rgba(0, 0, 0, 0.8); /* Semi-transparent background */
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+
+        #game-over h1, #start-screen h1 {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        #game-over p, #start-screen p {
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        button {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 16px;
+            padding: 10px 20px;
+            background-color: #4CAF50; /* Green button */
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049; /* Darker green on hover */
+        }
+
+        .hidden {
+            display: none !important; /* Important to override other styles */
+        }
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="800" height="600"></canvas>
-
+    <div id="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div id="ui-overlay">
+            <div id="score">Score: 0</div>
+            <div id="lives">Lives: 3</div>
+            <div id="game-over" class="hidden">
+                <h1>Game Over</h1>
+                <p id="final-score">Your Final Score: 0</p>
+                <button id="restart-button">Restart</button>
+            </div>
+            <div id="start-screen">
+                <h1>Galactic Guardians: Pixel Panic</h1>
+                <p>Defend Earth from the Pixel Invaders!</p>
+                <button id="start-game-button">Start Game</button>
+            </div>
+        </div>
+    </div>
     <script>
-        /* --- JavaScript: js/player.js --- */
+        /* --- JavaScript Code --- */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d'); // Get 2D rendering context
+        const scoreDisplay = document.getElementById('score');
+        const livesDisplay = document.getElementById('lives');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartButton = document.getElementById('restart-button');
+        const startScreen = document.getElementById('start-screen');
+        const startGameButton = document.getElementById('start-game-button');
+
+        // Game Variables
+        let score = 0;
+        let lives = 3;
+        let player;
+        let enemies = [];
+        let projectiles = [];
+        let enemyProjectiles = [];
+        let powerUps = [];
+        let gameRunning = false;
+        let level = 1;
+        let enemySpawnInterval = 150; // Adjust to control enemy spawn rate
+        let powerUpSpawnInterval = 300; // Adjust power-up spawn rate
+        let lastEnemySpawnTime = 0;
+        let lastPowerUpSpawnTime = 0;
+        let gameFrame = 0; // To time events independently of FPS
+
+        // --- Game Objects (Classes/Functions) ---
+
+        // Player Ship
         class Player {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.width = 20;
-                this.height = 20;
-                this.color = 'blue';
-                this.speed = 150; // pixels per second
-                this.health = 100;
-                this.directionX = 0;
-                this.directionY = 0;
-            }
-
-            update(deltaTime, level) {
-                // Movement based on input direction
-                this.x += this.directionX * this.speed * deltaTime;
-                this.y += this.directionY * this.speed * deltaTime;
-
-                // Collision detection with level walls
-                this.collideWithWalls(level);
-            }
-
-            collideWithWalls(level) {
-                level.walls.forEach(wall => {
-                    if (this.checkCollision(wall)) {
-                        // Very basic collision response - just stop movement
-                        if (this.directionX > 0) this.x = wall.x - this.width; // Right collision
-                        if (this.directionX < 0) this.x = wall.x + wall.width; // Left collision
-                        if (this.directionY > 0) this.y = wall.y - this.height; // Bottom collision
-                        if (this.directionY < 0) this.y = wall.y + wall.height; // Top collision
-                    }
-                });
-            }
-
-            checkCollision(wall) {
-                return (
-                    this.x < wall.x + wall.width &&
-                    this.x + this.width > wall.x &&
-                    this.y < wall.y + wall.height &&
-                    this.y + this.height > wall.y
-                );
-            }
-
-            takeDamage(damage) {
-                this.health -= damage;
-                if (this.health < 0) {
-                    this.health = 0; // Game over logic would go here
-                    console.log("Game Over!");
-                }
-            }
-
-            draw(ctx) {
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-            }
-        }
-        /* --- End JavaScript: js/player.js --- */
-    </script>
-
-    <script>
-        /* --- JavaScript: js/weapon.js --- */
-        class Weapon {
-            constructor(name, damage, fireRate) {
-                this.name = name;
-                this.damage = damage;
-                this.fireRate = fireRate; // Shots per second
-                this.lastFireTime = 0;
-            }
-
-            shoot(player, enemies, currentTime) {
-                if (currentTime - this.lastFireTime > 1 / this.fireRate) {
-                    this.lastFireTime = currentTime;
-                    console.log(`${this.name} fired!`);
-                    // Implement projectile or raycast logic here to hit enemies
-                    this.handleShootingLogic(player, enemies);
-                }
-            }
-
-            handleShootingLogic(player, enemies) {
-                // This is a placeholder for actual shooting logic.
-                // Subclasses will implement specific shooting behaviors.
-                console.log("Base weapon shooting logic - override in subclasses");
-            }
-        }
-
-        class Pistol extends Weapon {
             constructor() {
-                super('Pistol', 10, 2); // Name, Damage, Fire Rate
-            }
-
-            handleShootingLogic(player, enemies) {
-                console.log("Pistol shooting logic - finding closest enemy (simplified)");
-                let closestEnemy = null;
-                let minDistance = Infinity;
-
-                enemies.forEach(enemy => {
-                    const distance = Math.sqrt(Math.pow(enemy.x - player.x, 2) + Math.pow(enemy.y - player.y, 2));
-                    if (distance < minDistance) {
-                        minDistance = distance;
-                        closestEnemy = enemy;
-                    }
-                });
-
-                if (closestEnemy) {
-                    closestEnemy.takeDamage(this.damage);
-                    console.log(`Pistol hit enemy! Damage: ${this.damage}`);
-                } else {
-                    console.log("No enemies in range for Pistol.");
-                }
-            }
-        }
-        /* --- End JavaScript: js/weapon.js --- */
-    </script>
-
-    <script>
-        /* --- JavaScript: js/level.js --- */
-        class LevelGenerator {
-            constructor(width, height) {
-                this.levelWidth = width;
-                this.levelHeight = height;
-                this.cellSize = 50; // Size of each grid cell for level generation
-            }
-
-            generateLevel() {
-                const level = { walls: [] };
-                const gridWidth = Math.floor(this.levelWidth / this.cellSize);
-                const gridHeight = Math.floor(this.levelHeight / this.cellSize);
-
-                // Simple random wall generation
-                for (let x = 0; x < gridWidth; x++) {
-                    for (let y = 0; y < gridHeight; y++) {
-                        if (Math.random() < 0.2) { // 20% chance of a wall
-                            level.walls.push({
-                                x: x * this.cellSize,
-                                y: y * this.cellSize,
-                                width: this.cellSize,
-                                height: this.cellSize
-                            });
-                        }
-                    }
-                }
-                return level;
-            }
-        }
-        /* --- End JavaScript: js/level.js --- */
-    </script>
-
-    <script>
-        /* --- JavaScript: js/enemy.js --- */
-        class Enemy {
-            constructor(x, y) {
-                this.x = x;
-                this.y = y;
-                this.width = 20;
-                this.height = 20;
-                this.color = 'red';
-                this.speed = 80;
-                this.health = 50;
-            }
-
-            update(deltaTime, player, level) {
-                // Simple AI: Move towards player
-                const dx = player.x - this.x;
-                const dy = player.y - this.y;
-                const angle = Math.atan2(dy, dx);
-
-                this.x += Math.cos(angle) * this.speed * deltaTime;
-                this.y += Math.sin(angle) * this.speed * deltaTime;
-
-                this.collideWithWalls(level); // Prevent enemies from going through walls
-            }
-
-            collideWithWalls(level) {
-                level.walls.forEach(wall => {
-                    if (this.checkCollision(wall)) {
-                        // Simple collision response - move slightly away
-                        const dx = this.x - wall.x;
-                        const dy = this.y - wall.y;
-                        const angle = Math.atan2(dy, dx);
-                        this.x += Math.cos(angle) * 10 * deltaTime; // Move away slightly
-                        this.y += Math.sin(angle) * 10 * deltaTime;
-                    }
-                });
-            }
-
-            checkCollision(wall) {
-                return (
-                    this.x < wall.x + wall.width &&
-                    this.x + this.width > wall.x &&
-                    this.y < wall.y + wall.height &&
-                    this.y + this.height > wall.y
-                );
-            }
-
-            takeDamage(damage) {
-                this.health -= damage;
-                if (this.health < 0) {
-                    this.health = 0;
-                    console.log("Enemy defeated!");
-                }
-            }
-
-            draw(ctx) {
-                ctx.fillStyle = this.color;
-                ctx.fillRect(this.x, this.y, this.width, this.height);
-            }
-        }
-        /* --- End JavaScript: js/enemy.js --- */
-    </script>
-
-    <script>
-        /* --- JavaScript: js/ui.js --- */
-        class UI {
-            constructor(player, currentWeapon) {
-                this.player = player;
-                this.currentWeapon = currentWeapon;
-            }
-
-            update(player, currentWeapon) {
-                this.player = player; // Update player reference if needed
-                this.currentWeapon = currentWeapon; // Update weapon reference
-            }
-
-            draw(ctx) {
-                ctx.fillStyle = 'white';
-                ctx.font = '16px Arial';
-                ctx.fillText(`Health: ${this.player.health}`, 10, 20);
-                ctx.fillText(`Weapon: ${this.currentWeapon.name}`, 10, 40);
-                // Add more UI elements here (ammo, score, etc.)
-            }
-        }
-        /* --- End JavaScript: js/ui.js --- */
-    </script>
-
-    <script>
-        /* --- JavaScript: js/input.js --- */
-        class InputHandler {
-            constructor(player, currentWeapon, canvas) {
-                this.player = player;
-                this.currentWeapon = currentWeapon;
-                this.canvas = canvas;
-                this.keys = []; // Track pressed keys
-
-                window.addEventListener('keydown', (e) => {
-                    if (this.keys.indexOf(e.key) === -1) {
-                        this.keys.push(e.key);
-                    }
-                    this.handleKeyboardInput(e.key);
-                });
-
-                window.addEventListener('keyup', (e) => {
-                    this.keys = this.keys.filter(key => key !== e.key);
-                    this.handleKeyboardInput(e.key, true); // Pass keyup event
-                });
-
-                this.canvas.addEventListener('mousedown', (e) => {
-                    this.handleMouseClick(e);
-                });
-            }
-
-            updateWeapon(newWeapon) {
-                this.currentWeapon = newWeapon; // To change weapons later if needed
-            }
-
-            handleKeyboardInput(key, keyUp = false) {
-                switch (key) {
-                    case 'w':
-                    case 'W':
-                        this.player.directionY = keyUp ? (this.keys.includes('s') || this.keys.includes('S') ? 1 : 0) : -1;
-                        break;
-                    case 's':
-                    case 'S':
-                        this.player.directionY = keyUp ? (this.keys.includes('w') || this.keys.includes('W') ? -1 : 0) : 1;
-                        break;
-                    case 'a':
-                    case 'A':
-                        this.player.directionX = keyUp ? (this.keys.includes('d') || this.keys.includes('D') ? 1 : 0) : -1;
-                        break;
-                    case 'd':
-                    case 'D':
-                        this.player.directionX = keyUp ? (this.keys.includes('a') || this.keys.includes('A') ? -1 : 0) : 1;
-                        break;
-                }
-            }
-
-            handleMouseClick(event) {
-                const currentTime = performance.now() / 1000; // Convert to seconds
-                this.currentWeapon.shoot(game.enemies, currentTime); // Assuming 'game' is globally accessible (for now - improve later)
-            }
-        }
-        /* --- End JavaScript: js/input.js --- */
-    </script>
-
-    <script>
-        /* --- JavaScript: js/game.js --- */
-        // game.js - Orchestrates the game, main loop, and initialization
-
-        class Game {
-            constructor(canvasId) {
-                this.canvas = document.getElementById(canvasId);
-                this.ctx = this.canvas.getContext('2d');
-                this.player = new Player(this.canvas.width / 2, this.canvas.height / 2);
-                this.levelGenerator = new LevelGenerator(this.canvas.width, this.canvas.height);
-                this.level = this.levelGenerator.generateLevel(); // Generate procedural level
-                this.enemies = [new Enemy(100, 100), new Enemy(700, 500)]; // Example enemies
-                this.weapons = {
-                    pistol: new Pistol() // Example weapon
-                    // Add more weapons here later (e.g., shotgun, rifle)
-                };
-                this.currentWeapon = this.weapons.pistol; // Start with pistol
-                this.ui = new UI(this.player, this.currentWeapon);
-                this.inputHandler = new InputHandler(this.player, this.currentWeapon, this.canvas);
-
-                // Make game.enemies globally accessible for input.js (TEMPORARY - improve later with better state management)
-                window.game = this; // BAD PRACTICE for large projects, but okay for this simple example to avoid module issues quickly.
-
-                this.lastTime = 0;
-                this.gameLoop();
-            }
-
-            gameLoop(timestamp) {
-                const deltaTime = timestamp - this.lastTime;
-                this.lastTime = timestamp;
-
-                this.update(deltaTime);
-                this.draw();
-
-                requestAnimationFrame(this.gameLoop.bind(this));
-            }
-
-            update(deltaTime) {
-                this.player.update(deltaTime, this.level);
-                this.enemies.forEach(enemy => enemy.update(deltaTime, this.player, this.level));
-
-                // Weapon firing logic is handled in InputHandler based on player input
-                // (see input.js)
-
-                // Enemy collision with player (simple example)
-                this.enemies.forEach(enemy => {
-                    if (this.checkCollision(this.player, enemy)) {
-                        this.player.takeDamage(10); // Example damage
-                    }
-                });
-
-                // Check if enemies are dead and remove them (example)
-                this.enemies = this.enemies.filter(enemy => enemy.health > 0);
-
-                this.ui.update(this.player, this.currentWeapon); // Update UI elements
+                this.x = canvas.width / 2;
+                this.y = canvas.height - 50;
+                this.width = 30;
+                this.height = 30;
+                this.speed = 5;
+                this.color = 'lime'; // Player ship color
+                this.isInvincible = false;
+                this.invincibleTimer = 0;
             }
 
             draw() {
-                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-                // Draw Level
-                this.drawLevel();
-
-                // Draw Enemies
-                this.enemies.forEach(enemy => enemy.draw(this.ctx));
-
-                // Draw Player
-                this.player.draw(this.ctx);
-
-                // Draw UI
-                this.ui.draw(this.ctx);
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+                if (this.isInvincible && gameFrame % 10 < 5) { // Flicker effect when invincible
+                    ctx.strokeStyle = 'yellow';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(this.x - this.width / 2 - 5, this.y - this.height / 2 - 5, this.width + 10, this.height + 10);
+                }
             }
 
-            drawLevel() {
-                this.ctx.fillStyle = '#555'; // Wall color
-                this.level.walls.forEach(wall => {
-                    this.ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
-                });
+            moveLeft() {
+                this.x -= this.speed;
+                if (this.x < this.width / 2) this.x = this.width / 2; // Keep within bounds
             }
 
-            checkCollision(entity1, entity2) {
-                // Simple AABB collision detection (Axis-Aligned Bounding Boxes)
-                return (
-                    entity1.x < entity2.x + entity2.width &&
-                    entity1.x + entity1.width > entity2.x &&
-                    entity1.y < entity2.y + entity2.height &&
-                    entity1.y + entity1.height > entity2.y
-                );
+            moveRight() {
+                this.x += this.speed;
+                if (this.x > canvas.width - this.width / 2) this.x = canvas.width - this.width / 2; // Keep within bounds
+            }
+
+            shoot() {
+                projectiles.push(new Projectile(this.x, this.y - this.height / 2, -5, 'white')); // Shoots upwards
+            }
+
+            takeDamage() {
+                if (!this.isInvincible) {
+                    lives--;
+                    livesDisplay.textContent = `Lives: ${lives}`;
+                    if (lives <= 0) {
+                        gameOver();
+                    } else {
+                        this.becomeInvincible();
+                    }
+                }
+            }
+
+            becomeInvincible() {
+                this.isInvincible = true;
+                this.invincibleTimer = 150; // Invincibility lasts for 150 frames (adjust as needed)
+            }
+
+            updateInvincibility() {
+                if (this.isInvincible) {
+                    this.invincibleTimer--;
+                    if (this.invincibleTimer <= 0) {
+                        this.isInvincible = false;
+                    }
+                }
             }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            const game = new Game('gameCanvas');
-        });
-        /* --- End JavaScript: js/game.js --- */
-    </script>
 
+        // Enemy Ship
+        class Enemy {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.width = 25;
+                this.height = 25;
+                this.speedX = 1; // Horizontal movement
+                this.speedY = 0.5; // Vertical movement
+                this.color = 'red'; // Enemy color
+                this.type = type; // 'basic', 'fast', 'shooter' etc. for different behaviors
+                this.directionX = 1; // 1 for right, -1 for left
+                this.shootInterval = 100 + Math.random() * 200; // Random shooting interval for shooter types
+                this.lastShotTime = 0;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+            }
+
+            update() {
+                this.x += this.speedX * this.directionX;
+                this.y += this.speedY;
+
+                // Basic side-to-side movement and descend
+                if (this.x <= this.width / 2 || this.x >= canvas.width - this.width / 2) {
+                    this.directionX *= -1; // Reverse direction
+                    this.y += 15; // Move down slightly when hitting edge
+                }
+
+                if (this.type === 'shooter' && gameFrame - this.lastShotTime > this.shootInterval) {
+                    this.shoot();
+                    this.lastShotTime = gameFrame;
+                    this.shootInterval = 100 + Math.random() * 200; // Vary next shot interval
+                }
+
+                if (this.y > canvas.height) {
+                    // Enemy reached bottom - game over condition (optional, or reduce lives)
+                    // gameOver(); // Uncomment if enemies reaching bottom is game over
+                    this.y = -50; // Reset above screen instead, to keep game going (adjust as needed)
+                    this.x = Math.random() * canvas.width;
+                }
+            }
+
+            shoot() {
+                enemyProjectiles.push(new Projectile(this.x, this.y + this.height / 2, 3, 'orange')); // Shoot downwards
+            }
+        }
+
+
+        // Projectile (for both player and enemies)
+        class Projectile {
+            constructor(x, y, speedY, color) {
+                this.x = x;
+                this.y = y;
+                this.width = 5;
+                this.height = 10;
+                this.speedY = speedY;
+                this.color = color;
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+            }
+
+            update() {
+                this.y += this.speedY;
+            }
+        }
+
+        // Power-Ups
+        class PowerUp {
+            constructor(x, y, type) {
+                this.x = x;
+                this.y = y;
+                this.width = 20;
+                this.height = 20;
+                this.type = type; // 'fastShoot', 'shield', 'multiShot' etc.
+                this.color = 'cyan'; // Power-up color
+            }
+
+            draw() {
+                ctx.fillStyle = this.color;
+                ctx.fillRect(this.x - this.width / 2, this.y - this.height / 2, this.width, this.height);
+                ctx.fillStyle = 'black';
+                ctx.font = '12px Press Start 2P'; // Use retro font
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(this.getSymbol(), this.x, this.y); // Display symbol
+            }
+
+            getSymbol() {
+                switch (this.type) {
+                    case 'fastShoot': return 'F';
+                    case 'shield': return 'S';
+                    case 'multiShot': return 'M';
+                    default: return 'P'; // Default symbol
+                }
+            }
+
+            update() {
+                this.y += 1; // Move downwards
+            }
+        }
+
+
+        // --- Game Functions ---
+
+        function spawnEnemy() {
+            if (gameFrame - lastEnemySpawnTime > enemySpawnInterval) {
+                const x = Math.random() * canvas.width;
+                const y = -50; // Start off-screen
+                const enemyType = Math.random() < 0.8 ? 'basic' : 'shooter'; // 80% basic, 20% shooter
+                enemies.push(new Enemy(x, y, enemyType));
+                lastEnemySpawnTime = gameFrame;
+                enemySpawnInterval = Math.max(50, enemySpawnInterval - 2); // Increase difficulty by reducing interval
+            }
+        }
+
+        function spawnPowerUp() {
+            if (gameFrame - lastPowerUpSpawnTime > powerUpSpawnInterval) {
+                const x = Math.random() * canvas.width;
+                const y = -50;
+                const powerUpTypes = ['fastShoot', 'shield', 'multiShot'];
+                const randomType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                powerUps.push(new PowerUp(x, y, randomType));
+                lastPowerUpSpawnTime = gameFrame;
+                powerUpSpawnInterval = 300 + Math.random() * 200; // Vary spawn interval
+            }
+        }
+
+
+        function updateScore(points) {
+            score += points;
+            scoreDisplay.textContent = `Score: ${score}`;
+        }
+
+        function checkCollisions() {
+            // Projectile - Enemy collisions
+            for (let i = 0; i < projectiles.length; i++) {
+                for (let j = 0; j < enemies.length; j++) {
+                    if (isCollision(projectiles[i], enemies[j])) {
+                        projectiles.splice(i, 1); // Remove projectile
+                        enemies.splice(j, 1);     // Remove enemy
+                        i--; // Adjust index after splice
+                        updateScore(100); // Increase score
+                        break; // Move to next projectile
+                    }
+                }
+            }
+
+            // Enemy Projectile - Player collision
+            for (let i = 0; i < enemyProjectiles.length; i++) {
+                if (isCollision(enemyProjectiles[i], player)) {
+                    enemyProjectiles.splice(i, 1);
+                    player.takeDamage();
+                    i--;
+                }
+            }
+
+            // Power-Up - Player collision
+            for (let i = 0; i < powerUps.length; i++) {
+                if (isCollision(powerUps[i], player)) {
+                    applyPowerUpEffect(powerUps[i].type);
+                    powerUps.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        function applyPowerUpEffect(type) {
+            switch (type) {
+                case 'fastShoot':
+                    player.shootInterval = 10; // Example: Increase fire rate
+                    setTimeout(() => { player.shootInterval = 25; }, 5000); // Revert after 5 seconds
+                    break;
+                case 'shield':
+                    player.becomeInvincible(); // Activate invincibility
+                    break;
+                case 'multiShot':
+                    player.multiShotActive = true; // Implement multi-shot logic in player.shoot()
+                    setTimeout(() => { player.multiShotActive = false; }, 7000); // Revert after 7 seconds
+                    break;
+            }
+            console.log(`Power-up activated: ${type}`);
+        }
+
+
+        function isCollision(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+
+        function gameOver() {
+            gameRunning = false;
+            gameOverScreen.classList.remove('hidden');
+            finalScoreDisplay.textContent = `Your Final Score: ${score}`;
+        }
+
+        function resetGame() {
+            score = 0;
+            lives = 3;
+            level = 1;
+            enemySpawnInterval = 150;
+            powerUpSpawnInterval = 300;
+            lastEnemySpawnTime = 0;
+            lastPowerUpSpawnTime = 0;
+            gameFrame = 0;
+            scoreDisplay.textContent = `Score: ${score}`;
+            livesDisplay.textContent = `Lives: ${lives}`;
+            enemies = [];
+            projectiles = [];
+            enemyProjectiles = [];
+            powerUps = [];
+            player = new Player(); // Re-initialize player
+            gameOverScreen.classList.add('hidden');
+            startScreen.classList.add('hidden'); // Hide start screen if it was visible
+            gameRunning = true;
+        }
+
+        function gameLoop() {
+            if (!gameRunning) return; // Stop loop if game is not running
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
+
+            spawnEnemy();
+            spawnPowerUp();
+
+            player.updateInvincibility();
+            player.draw();
+
+            enemies.forEach(enemy => {
+                enemy.update();
+                enemy.draw();
+            });
+
+            projectiles.forEach(projectile => {
+                projectile.update();
+                projectile.draw();
+            });
+            projectiles = projectiles.filter(projectile => projectile.y > 0); // Remove off-screen projectiles
+
+            enemyProjectiles.forEach(projectile => {
+                projectile.update();
+                enemyProjectiles.draw();
+            });
+            enemyProjectiles = enemyProjectiles.filter(projectile => projectile.y < canvas.height); // Remove off-screen enemy projectiles
+
+
+            powerUps.forEach(powerUp => {
+                powerUp.update();
+                powerUp.draw();
+            });
+            powerUps = powerUps.filter(powerUp => powerUp.y < canvas.height); // Remove off-screen power-ups
+
+
+            checkCollisions();
+
+            gameFrame++;
+            requestAnimationFrame(gameLoop); // Loop the game
+        }
+
+        // --- Input Handling ---
+        const keys = {};
+        document.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+        document.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        function handleInput() {
+            if (keys['ArrowLeft'] || keys['a']) {
+                player.moveLeft();
+            }
+            if (keys['ArrowRight'] || keys['d']) {
+                player.moveRight();
+            }
+            if (keys[' '] || keys['Spacebar']) { // Spacebar for shooting
+                player.shoot();
+                keys[' '] = false; // Prevent continuous shooting if space held down
+                keys['Spacebar'] = false;
+            }
+        }
+
+        // --- Event Listeners ---
+        restartButton.addEventListener('click', () => {
+            resetGame();
+            gameLoop(); // Start the game loop again
+        });
+
+        startGameButton.addEventListener('click', () => {
+            resetGame();
+            startScreen.classList.add('hidden');
+            gameLoop();
+        });
+
+
+        // --- Game Initialization and Start ---
+        function init() {
+            player = new Player(); // Initialize player
+            livesDisplay.textContent = `Lives: ${lives}`;
+            scoreDisplay.textContent = `Score: ${score}`;
+            // Start screen is visible initially, game starts on button click
+        }
+
+        init(); // Call init to set up initial game state
+
+
+        // --- Main Game Update Loop (runs every frame) ---
+        function update() {
+            if (!gameRunning) return; // Stop updating if game not running
+            handleInput(); // Check for keyboard input
+        }
+
+        function mainGameLoop() {
+            update(); // Update game state (input, movement, etc.)
+            gameLoop(); // Render and other frame-based actions
+        }
+
+        setInterval(mainGameLoop, 1000/60); // Run at ~60 FPS (adjust as needed)
+    </script>
 </body>
 </html>
