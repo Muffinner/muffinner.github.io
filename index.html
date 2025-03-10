@@ -3,47 +3,683 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fluid Dot with Border</title>
+    <title>Git Interactive Simulation</title>
     <style>
-        /* style.css content */
+        /* style.css */
         body {
-            background-color: black;
+            font-family: sans-serif;
+            background-color: #f0f0f0;
             margin: 0;
-            height: 100vh;
+            padding: 0;
             display: flex;
             justify-content: center;
             align-items: center;
+            min-height: 100vh;
         }
 
-        #dot-container { /* New container div */
-            width: 20vw; /* Relative to viewport width */
-            height: 20vw; /*  Make it a square */
-            max-width: 20vh; /* Limit based on viewport height */
-            max-height: 20vh;
-            border: 2px solid red; /* Add the red border */
+        .container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr); /* Two main columns */
+            grid-template-rows: auto auto auto; /* Rows for terminal, workspace/staging, repos */
+            gap: 20px;
+            width: 90%;
+            max-width: 1200px;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+
+        h1 {
+            grid-column: 1 / -1; /* Span across all columns */
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .terminal {
+          grid-column: 1 / -1;
+          background-color: #333;
+          color: #fff;
+          padding: 10px;
+          border-radius: 8px;
+          font-family: monospace;
+          overflow-y: auto; /* Make the terminal scrollable */
+          max-height: 300px; /* Limit the height of the terminal */
+        }
+        .terminal-header {
+          display: flex;
+          align-items: center;
+          padding: 5px;
+          background-color: #444;
+          border-top-left-radius: 8px;
+          border-top-right-radius: 8px;
+        }
+
+        .terminal-buttons {
+          display: flex;
+          margin-right: 10px;
+        }
+
+        .terminal-buttons div {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          margin-right: 5px;
+        }
+
+        .close-button { background-color: #ff5f57; }
+        .minimize-button { background-color: #ffbd2e; }
+        .maximize-button { background-color: #28c940; }
+
+        .terminal-title {
+            flex-grow: 1;
+            text-align: center;
+            font-size: 0.9em;
+        }
+
+
+        .terminal-output {
+          padding: 10px;
+        }
+        .terminal-output p {
+          margin: 5px 0;
+          white-space: pre-wrap; /* Preserve line breaks and spacing from JS */
+        }
+
+        #prompt {
+            display: inline;
+            color: #0f0;
+        }
+
+        #commandInput {
+            background-color: transparent;
+            border: none;
+            color: #fff;
+            outline: none;
+            font-family: monospace;
+            width: 80%;  /* Adjust as needed */
+        }
+
+        .workspace, .staging-area, .local-repo,.remote-repo {
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 8px;
+            min-height: 150px;
+        }
+
+        .workspace {
+            grid-column: 1 / 2;
+        }
+        .staging-area {
+            grid-column: 2 / 3;
+        }
+
+        .local-repo {
+            grid-column: 1 / 2;
+        }
+
+        .remote-repo{
+          grid-column: 2/3;
+        }
+
+
+        .files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .file {
+            background-color: #eee;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .file.staged {
+            background-color: #d4edda; /* Light green for staged files */
+            border: 1px solid #c3e6cb;
+        }
+        .file.deleted {
+          background-color: #f8d7da;
+          text-decoration: line-through;
+        }
+
+
+        .commit {
+          display: flex;
+          align-items: center;
+          margin-bottom: 10px;
+          padding: 5px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+          background-color: #f9f9f9;
+        }
+
+        .commit-dot {
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            display: flex; /*center the dot inside*/
-            justify-content: center;
-            align-items: center;
-
-
+            background-color: #007bff; /* Blue for commits */
+            margin-right: 10px;
+        }
+         .commit-message {
+            font-size: 0.9em;
         }
 
-        #blue-dot {
-            width: 80%;  /* 80% of the container's width */
-            height: 80%; /* 80% of the container's height */
-            background-color: blue;
-            border-radius: 50%;
+        .modal {
+            display: none; /* Hidden by default */
+            position: fixed;
+            z-index: 1;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
         }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 15% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 80%;
+            border-radius: 8px;
+        }
+
+        .close-modal {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close-modal:hover,
+        .close-modal:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        #stagingList {
+          list-style: none;
+          padding: 0;
+        }
+
+        #stagingList li {
+          margin-bottom: 5px;
+          padding: 5px;
+          background-color: #d4edda;
+          border-radius: 4px;
+        }
+
+
+        @media (max-width: 768px) {
+          .container{
+            grid-template-columns: 1fr;
+          }
+          .workspace, .staging-area, .local-repo,.remote-repo {
+            grid-column: 1/-1;
+        }
+        }
+
     </style>
 </head>
 <body>
-    <div id="dot-container">
-        <div id="blue-dot"></div>
+    <div class="container">
+        <h1>Git Interactive Simulation</h1>
+
+        <div class="terminal">
+            <div class="terminal-header">
+                <div class="terminal-buttons">
+                    <div class="close-button"></div>
+                    <div class="minimize-button"></div>
+                    <div class="maximize-button"></div>
+                </div>
+                <div class="terminal-title">Git Terminal</div>
+            </div>
+            <div class="terminal-output" id="terminalOutput">
+                <p>> Welcome to the Git Simulation!</p>
+                <p>> Type a command (init, add, commit, status, branch, checkout, merge, push, help) and press Enter.</p>
+                <p id="prompt">> </p><input type="text" id="commandInput" autofocus>
+            </div>
+
+        </div>
+
+
+        <div class="workspace" id="workspace">
+            <h2>Workspace</h2>
+            <div class="files" id="files">
+                <!-- Files will be added here dynamically -->
+            </div>
+            <button id="addFilesButton">Add Random Files</button>
+        </div>
+
+
+        <div class="staging-area" id="stagingArea">
+          <h2>Staging Area</h2>
+          <ul id="stagingList"></ul>
+        </div>
+        
+        <div class="local-repo" id="localRepo">
+          <h2>Local Repository</h2>
+          <div class="commits" id="commits">
+            <!-- Commits will be represented here visually -->
+          </div>
+        </div>
+        
+        <div class="remote-repo" id="remoteRepo">
+          <h2>Remote Repository (Simulated)</h2>
+            <div class="commits" id="remoteCommits">
+            <!-- Commits will be represented here visually -->
+          </div>
+        </div>
+
+
+        <div id="helpModal" class="modal">
+            <div class="modal-content">
+              <span class="close-modal">×</span>
+              <h2>Git Commands Help</h2>
+              <ul>
+                <li><strong>init</strong>: Initializes a new Git repository.</li>
+                <li><strong>add [file]</strong>: Adds a file to the staging area.  Use "add ." to add all changes.</li>
+                <li><strong>commit -m "[message]"</strong>: Commits staged changes with a message.</li>
+                <li><strong>status</strong>: Shows the status of the working directory and staging area.</li>
+                <li><strong>branch [branch-name]</strong>: Creates a new branch.</li>
+                <li><strong>checkout [branch-name]</strong>: Switches to a different branch.</li>
+                <li><strong>merge [branch-name]</strong>: Merges a branch into the current branch (simplified).</li>
+                <li><strong>push</strong>: Pushes local commits to the (simulated) remote repository.</li>
+                 <li><strong>help</strong>: Displays this help message.</li>
+              </ul>
+            </div>
+        </div>
     </div>
+
     <script>
-        // script.js content
-        //empty for now
+        // script.js
+        document.addEventListener('DOMContentLoaded', () => {
+            const commandInput = document.getElementById('commandInput');
+            const terminalOutput = document.getElementById('terminalOutput');
+            const filesDiv = document.getElementById('files');
+            const stagingList = document.getElementById('stagingList');
+            const commitsDiv = document.getElementById('commits');
+            const remoteCommitsDiv = document.getElementById('remoteCommits');
+            const addFilesButton = document.getElementById('addFilesButton');
+            const helpModal = document.getElementById('helpModal');
+            const closeModal = document.getElementsByClassName('close-modal')[0];
+
+            let workspaceFiles = [];
+            let stagedFiles = [];
+            let commits = [];
+            let remoteCommits = [];  //Simulated remote
+            let currentBranch = "main";
+            let branches = ["main"];
+
+            // --- Helper Functions ---
+
+            function printToTerminal(message) {
+                const p = document.createElement('p');
+                p.textContent = message;
+                terminalOutput.insertBefore(p, commandInput.parentNode);  //Insert before prompt
+                terminalOutput.scrollTop = terminalOutput.scrollHeight; // Scroll to bottom
+            }
+
+            function updateWorkspace() {
+                filesDiv.innerHTML = ''; // Clear existing files
+                workspaceFiles.forEach(file => {
+                    const fileElement = document.createElement('div');
+                    fileElement.classList.add('file');
+                    fileElement.textContent = file.name;
+                    if (file.staged) {
+                        fileElement.classList.add('staged');
+                    }
+                   if (file.deleted) {
+                        fileElement.classList.add('deleted');
+                    }
+
+                    fileElement.addEventListener('click', () => toggleStageFile(file.name));
+                    filesDiv.appendChild(fileElement);
+                });
+            }
+
+            function updateStagingArea() {
+                stagingList.innerHTML = "";
+                stagedFiles.forEach(file => {
+                  const listItem = document.createElement("li");
+                  listItem.textContent = file.name;
+                  stagingList.appendChild(listItem);
+                });
+            }
+
+            function updateCommits() {
+                commitsDiv.innerHTML = '';
+                commits.forEach(commit => {
+                    const commitElement = document.createElement('div');
+                    commitElement.classList.add('commit');
+                    commitElement.innerHTML = `<div class="commit-dot"></div><div class="commit-message">${commit.message}</div>`;
+                    commitsDiv.appendChild(commitElement);
+                });
+            }
+            
+            function updateRemoteCommits(){
+              remoteCommitsDiv.innerHTML = '';
+                remoteCommits.forEach(commit => {
+                    const commitElement = document.createElement('div');
+                    commitElement.classList.add('commit');
+                    commitElement.innerHTML = `<div class="commit-dot"></div><div class="commit-message">${commit.message}</div>`;
+                    remoteCommitsDiv.appendChild(commitElement);
+                });
+            }
+            
+            function createRandomFile() {
+                const fileNames = ['index.html', 'style.css', 'script.js', 'about.html', 'contact.js', 'README.md', 'data.json'];
+                const randomName = fileNames[Math.floor(Math.random() * fileNames.length)];
+                const randomContent = `// Random content ${Math.random()}`; // Simple placeholder
+                return { name: randomName, content: randomContent, staged: false, deleted: false};
+            }
+            
+            function addFileToWorkspace(file) {
+              if (!workspaceFiles.find(f => f.name === file.name)) { // Prevent duplicates
+                  workspaceFiles.push(file);
+                  updateWorkspace();
+              }
+            }
+
+
+            // --- Command Handlers ---
+            function handleInit() {
+                if (commits.length > 0) {
+                    printToTerminal("> Repository has already been initialized.");
+                    return;
+                }
+                commits = [];
+                workspaceFiles = [];
+                stagedFiles = [];
+                updateWorkspace();
+                updateStagingArea();
+                updateCommits();
+                printToTerminal("> Initialized empty Git repository");
+            }
+
+            function handleAdd(filename) {
+              if (!filename) {
+                printToTerminal("> Error: 'add' command requires a filename or '.'");
+                return;
+              }
+
+              if (filename === ".") {
+                // Add all changed files
+                let addedAny = false;
+                workspaceFiles.forEach(file => {
+                  if (!file.staged && !file.deleted) {  // Don't stage already staged, or deleted files.
+                    file.staged = true;
+                    stagedFiles.push(file);
+                    addedAny = true;
+                  }
+                });
+
+                if (addedAny) {
+                  printToTerminal("> Added all files to the staging area.");
+                } else {
+                    printToTerminal("> No changes to add.");
+                }
+
+              } else {
+                // Add a specific file
+                  const file = workspaceFiles.find(f => f.name === filename);
+                  if (file && !file.staged && !file.deleted) {  // Check if exists and isn't staged or deleted.
+                      file.staged = true;
+                      stagedFiles.push(file);
+                      printToTerminal(`> Added ${filename} to the staging area.`);
+                  }
+                   else if (file?.deleted){
+                        printToTerminal(`> Error: File ${filename} is marked for deletion.  Cannot stage.`);
+                    }
+
+                  else {
+                      printToTerminal(`> Error: File ${filename} not found or already staged.`);
+                  }
+              }
+              updateWorkspace();
+              updateStagingArea();
+            }
+
+
+            function handleCommit(message) {
+                 if (!message) {
+                    printToTerminal("> Error: 'commit' command requires a message (-m \"Your message\").");
+                    return;
+                }
+                if (stagedFiles.length === 0) {
+                    printToTerminal("> Nothing to commit (use \"git add\")");
+                    return;
+                }
+
+                const newCommit = {
+                    message: message,
+                    files: stagedFiles.map(file => ({ name: file.name, content: file.content })), //Simple file copy
+                    timestamp: new Date()
+                };
+                commits.push(newCommit);
+
+                //Clear staging area, mark files as unstaged, remove deleted files.
+                stagedFiles = [];
+                workspaceFiles.forEach(file => {
+                    file.staged = false;
+                    if (file.deleted) {
+                      const index = workspaceFiles.indexOf(file);
+                        if (index > -1) {
+                          workspaceFiles.splice(index, 1);
+                        }
+                    }
+                });
+
+                printToTerminal(`> [${currentBranch} ${commits.length}] ${message}`);
+                updateCommits();
+                updateStagingArea();
+                updateWorkspace();
+            }
+
+            function handleStatus() {
+                printToTerminal(`> On branch ${currentBranch}`);
+
+                if (stagedFiles.length > 0) {
+                  printToTerminal("> Changes to be committed:");
+                  stagedFiles.forEach(file => {
+                      printToTerminal(`>    new file:  ${file.name}`);
+                  });
+                } else {
+                    printToTerminal("> No changes to be committed.");
+                }
+
+                const untrackedFiles = workspaceFiles.filter(file => !file.staged && !file.deleted);
+                const deletedFiles = workspaceFiles.filter(file => file.deleted);
+                if (untrackedFiles.length > 0 || deletedFiles.length>0) {
+                  printToTerminal("> Changes not staged for commit:");
+                  untrackedFiles.forEach(file => {
+                    printToTerminal(`>       modified:   ${file.name}`);
+                  });
+                  deletedFiles.forEach(file => {
+                     printToTerminal(`>       deleted:   ${file.name}`);
+                  });
+                } else {
+                  printToTerminal("> Nothing added to commit but untracked files present (use \"git add\")");
+                }
+
+                if(untrackedFiles.length === 0 && stagedFiles.length === 0 && deletedFiles.length === 0){
+                     printToTerminal("> working tree clean");
+                }
+            }
+
+            function handleBranch(branchName) {
+                if (!branchName) {
+                    printToTerminal("> Usage: branch [branch-name]");
+                    return;
+                }
+                if (branches.includes(branchName)) {
+                    printToTerminal(`> Error: Branch '${branchName}' already exists.`);
+                    return;
+                }
+                branches.push(branchName);
+                printToTerminal(`> Created branch ${branchName}`);
+            }
+
+            function handleCheckout(branchName) {
+              if (!branchName) {
+                printToTerminal("> Usage: checkout [branch-name]");
+                return;
+              }
+
+              if (!branches.includes(branchName)) {
+                printToTerminal(`> Error: Branch '${branchName}' not found.`);
+                return;
+              }
+
+              if(stagedFiles.length > 0){
+                 printToTerminal("> Error: Please commit your changes or stash them before you switch branches.");
+                 return;
+              }
+
+              currentBranch = branchName;
+              //In a *real* git, we'd restore the workspace to the state of the branch.  Here, we just change the name.
+              printToTerminal(`> Switched to branch '${currentBranch}'`);
+              updateCommits(); //Update in case commit order is different per branch.  (Simplified for the demo).
+
+            }
+
+            function handleMerge(branchName) {
+               if (!branchName) {
+                    printToTerminal("> Usage: merge [branch-name]");
+                    return;
+                }
+
+               if(stagedFiles.length > 0){
+                 printToTerminal("> Error: Please commit your changes or stash them before you merge.");
+                 return;
+              }
+
+
+                //VERY simplified merge.  Just adds a message.  No conflict resolution!
+                printToTerminal(`> Merged branch '${branchName}' into ${currentBranch}`);
+                const mergeCommit = {
+                    message: `Merge branch '${branchName}' into ${currentBranch}`,
+                    files: [], //No actual file changes in this simplified version
+                    timestamp: new Date()
+                }
+                commits.push(mergeCommit);
+                updateCommits();
+            }
+            
+            function handlePush(){
+              if (commits.length === 0) {
+                printToTerminal("> Nothing to push (no commits on current branch).");
+                return;
+              }
+
+              // Simulate pushing by copying commits to remoteCommits
+              remoteCommits = [...commits]; // Create a copy to simulate a separate remote
+                printToTerminal(`> Pushed to remote repository (simulated).`);
+              updateRemoteCommits();
+
+            }
+
+             function toggleStageFile(filename) {
+                const file = workspaceFiles.find(f => f.name === filename);
+                if (file) {
+                  if (!file.staged){
+                     file.staged = true;
+                     stagedFiles.push(file);
+                  }
+                  else{
+                    file.staged = false;
+                    const index = stagedFiles.findIndex((f) => f.name === file.name);
+                      if (index !== -1) {
+                        stagedFiles.splice(index, 1);
+                      }
+
+                  }
+                    updateWorkspace();
+                    updateStagingArea();
+                }
+            }
+
+
+
+            // --- Event Listeners ---
+
+            commandInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    const command = commandInput.value.trim();
+                    printToTerminal(`> ${command}`);
+                    commandInput.value = '';
+
+                     const parts = command.split(" ");
+                    const mainCommand = parts[0];
+                    const argument = parts.slice(1).join(" "); //Rejoin for commit messages, etc.
+
+
+                    switch (mainCommand) {
+                        case 'init':
+                            handleInit();
+                            break;
+                       case 'add':
+                          handleAdd(argument);
+                          break;
+                        case 'commit':
+                            const messageMatch = command.match(/-m\s*"([^"]+)"/);  //Regex for commit message
+                            const message = messageMatch ? messageMatch[1] : null;
+                            handleCommit(message);
+                            break;
+                        case 'status':
+                            handleStatus();
+                            break;
+                        case 'branch':
+                            handleBranch(argument);
+                            break;
+                        case 'checkout':
+                            handleCheckout(argument);
+                            break;
+                        case 'merge':
+                            handleMerge(argument);
+                            break;
+                        case 'push':
+                          handlePush();
+                          break;
+                        case 'help':
+                            helpModal.style.display = "block";
+                            break;
+                        case '':
+                            // Do nothing for empty command
+                            break;
+                      case 'clear':
+                            terminalOutput.innerHTML = '<p>> </p><input type="text" id="commandInput" autofocus>';
+                            break;
+                        default:
+                            printToTerminal(`> Command not recognized: ${command}`);
+                    }
+                }
+            });
+
+            addFilesButton.addEventListener('click', () => {
+              for(let i = 0; i < 3; i++){
+                const newFile = createRandomFile();
+                addFileToWorkspace(newFile);
+              }
+            });
+
+            // Modal events
+            closeModal.onclick = () => {
+                helpModal.style.display = "none";
+            }
+            window.onclick = (event) => {
+                if (event.target == helpModal) {
+                    helpModal.style.display = "none";
+                }
+            }
+        });
     </script>
 </body>
 </html>
