@@ -418,6 +418,7 @@
         }
 
         function resetGame() {
+            console.log('resetGame() called'); // ADDED CONSOLE LOG FOR DEBUGGING
             score = 0;
             lives = 3;
             level = 1;
@@ -439,7 +440,11 @@
         }
 
         function gameLoop() {
-            if (!gameRunning) return; // Stop loop if game is not running
+            console.log('gameLoop() called'); // ADDED CONSOLE LOG FOR DEBUGGING
+            if (!gameRunning) {
+                console.log('gameLoop() - gameRunning is false, exiting'); // ADDED CONSOLE LOG FOR DEBUGGING
+                return;
+            } // Stop loop if game is not running
 
             ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear canvas
 
@@ -510,6 +515,7 @@
         });
 
         startGameButton.addEventListener('click', () => {
+            console.log('Start Game button clicked!'); // ADDED CONSOLE LOG FOR DEBUGGING
             resetGame();
             startScreen.classList.add('hidden');
             gameLoop();
